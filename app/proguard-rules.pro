@@ -1,0 +1,6 @@
+-keep class com.kazatune.** { *; }
+-keep class com.maxrave.** { *; }
+-keepattributes *Annotation*,Signature,InnerClasses,EnclosingMethod
+-dontwarn okhttp3.**
+-dontwarn okio.**
+-dontwarn kotlinx.serialization.**

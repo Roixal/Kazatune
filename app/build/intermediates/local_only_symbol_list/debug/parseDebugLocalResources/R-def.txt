@@ -1,0 +1,20 @@
+R_DEF: Internal format may change without notice
+local
+drawable comment_bg_bottom_sheet_dialog
+drawable ic_launcher_background
+drawable ic_launcher_foreground
+drawable playing_background_bg
+mipmap grid_camera
+mipmap ic_back_black_online
+mipmap ic_close_black_online
+mipmap ic_launcher
+mipmap ic_launcher_round
+string app_name
+string comments_title
+string lyrics_title
+string no_lyrics
+string search_hint
+string tab_library
+string tab_search
+string tab_skim
+style Theme.Kazatune
