@@ -649,15 +649,15 @@ object MEDIA_CUSTOM_COMMAND {
 
 object MEDIA_NOTIFICATION {
     const val NOTIFICATION_ID = 200
-    const val NOTIFICATION_CHANNEL_NAME = "Kazatune Playback Notification"
-    const val NOTIFICATION_CHANNEL_ID = "Kazatune Playback Notification ID"
+    const val NOTIFICATION_CHANNEL_NAME = "Skim Playback Notification"
+    const val NOTIFICATION_CHANNEL_ID = "Skim Playback Notification ID"
 }
 
 const val SETTINGS_FILENAME = "settings"
 
 const val DOWNLOAD_EXOPLAYER_FOLDER = "download"
 
-const val DB_NAME = "kazatune.db"
+const val DB_NAME = "skim.db"
 
 const val EXOPLAYER_DB_NAME = "exoplayer_internal.db"
 

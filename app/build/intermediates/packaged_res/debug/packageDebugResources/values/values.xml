@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">Kazatune</string>
+    <string name="app_name">Skim</string>
     <string name="comments_title">Comments</string>
     <string name="lyrics_title">Lyrics</string>
     <string name="no_lyrics">No lyrics available</string>

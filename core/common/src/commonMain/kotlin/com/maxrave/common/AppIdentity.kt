@@ -9,5 +9,5 @@ data class AppIdentity(
     val isDevBuild: Boolean = false,
 ) {
     val userAgent: String
-        get() = "Kazatune/$versionName ($applicationId; $platform)"
+        get() = "Skim/$versionName ($applicationId; $platform)"
 }

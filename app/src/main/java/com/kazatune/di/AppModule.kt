@@ -15,7 +15,9 @@ val appModule = module {
             homeRepository = get(),
             songRepository = get(),
             lyricsCanvasRepository = get(),
-            streamRepository = get()
+            streamRepository = get(),
+            downloadHandler = get(),
+            dataStoreManager = get()
         )
     }
     viewModel {
@@ -34,6 +36,7 @@ val appModule = module {
         LibraryViewModel(
             songRepository = get(),
             localPlaylistRepository = get(),
+            playlistRepository = get(),
             mediaPlayerHandler = get()
         )
     }

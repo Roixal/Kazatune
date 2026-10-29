@@ -2,12 +2,16 @@ package com.kazatune.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.maxrave.domain.data.entities.DownloadState
 import com.maxrave.domain.data.model.browse.album.Track
 import com.maxrave.domain.data.model.canvas.CanvasResult
 import com.maxrave.domain.data.model.home.Content
+import com.maxrave.domain.data.model.home.HomeItem
 import com.maxrave.domain.data.model.metadata.Lyrics
 import com.maxrave.domain.data.model.streams.YouTubeWatchEndpoint
 import com.maxrave.domain.extension.toGenericMediaItem
+import com.maxrave.domain.manager.DataStoreManager
+import com.maxrave.domain.mediaservice.handler.DownloadHandler
 import com.maxrave.domain.mediaservice.handler.MediaPlayerHandler
 import com.maxrave.domain.mediaservice.handler.NowPlayingTrackState
 import com.maxrave.domain.mediaservice.handler.PlayerEvent
@@ -29,6 +33,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.distinctUntilChangedBy
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
@@ -38,12 +43,19 @@ enum class SkimTab {
     EXPLORE
 }
 
+data class ExploreCategory(
+    val title: String,
+    val tracks: List<Track>
+)
+
 class SkimViewModel(
     private val mediaPlayerHandler: MediaPlayerHandler,
     private val homeRepository: HomeRepository,
     private val songRepository: SongRepository,
     private val lyricsCanvasRepository: LyricsCanvasRepository,
-    private val streamRepository: StreamRepository
+    private val streamRepository: StreamRepository,
+    private val downloadHandler: DownloadHandler,
+    private val dataStoreManager: DataStoreManager
 ) : ViewModel() {
 
     private val _skimTab = MutableStateFlow(SkimTab.FOR_YOU)
@@ -71,18 +83,35 @@ class SkimViewModel(
     private val _currentCanvas = MutableStateFlow<CanvasResult?>(null)
     val currentCanvas: StateFlow<CanvasResult?> = _currentCanvas.asStateFlow()
 
+    // Room-persisted liked songs
     private val _likedVideoIds = MutableStateFlow<Set<String>>(emptySet())
     val likedVideoIds: StateFlow<Set<String>> = _likedVideoIds.asStateFlow()
+
+    // Download state tracking
+    private val _downloadedVideoIds = MutableStateFlow<Set<String>>(emptySet())
+    val downloadedVideoIds: StateFlow<Set<String>> = _downloadedVideoIds.asStateFlow()
+
+    private val _downloadingVideoIds = MutableStateFlow<Set<String>>(emptySet())
+    val downloadingVideoIds: StateFlow<Set<String>> = _downloadingVideoIds.asStateFlow()
+
+    // Rich Explore Shelves
+    private val _exploreCategories = MutableStateFlow<List<ExploreCategory>>(emptyList())
+    val exploreCategories: StateFlow<List<ExploreCategory>> = _exploreCategories.asStateFlow()
+
+    private val _selectedGenre = MutableStateFlow("All")
+    val selectedGenre: StateFlow<String> = _selectedGenre.asStateFlow()
 
     private var lyricsJob: Job? = null
     private var radioJob: Job? = null
     private var progressTickerJob: Job? = null
+    private var refreshCounter = 0
 
     init {
         loadFeed(SkimTab.FOR_YOU)
-        observeLikedSongs()
+        observeLikedAndDownloaded()
         observePlayback()
         startPositionTicker()
+        loadExploreData()
     }
 
     private fun startPositionTicker() {
@@ -99,10 +128,22 @@ class SkimViewModel(
         }
     }
 
-    private fun observeLikedSongs() {
+    private fun observeLikedAndDownloaded() {
         viewModelScope.launch(Dispatchers.IO) {
             songRepository.getLikedSongs().collect { songs ->
                 _likedVideoIds.value = songs.map { it.videoId }.toSet()
+            }
+        }
+        viewModelScope.launch(Dispatchers.IO) {
+            songRepository.getDownloadedSongs().collect { songs ->
+                _downloadedVideoIds.value = songs?.map { it.videoId }?.toSet() ?: emptySet()
+            }
+        }
+        viewModelScope.launch(Dispatchers.IO) {
+            downloadHandler.downloadTask.collect { tasks ->
+                _downloadingVideoIds.value = tasks.filter {
+                    it.value == DownloadHandler.STATE_DOWNLOADING || it.value == DownloadHandler.STATE_QUEUED
+                }.keys
             }
         }
     }
@@ -110,53 +151,72 @@ class SkimViewModel(
     fun selectSkimTab(tab: SkimTab) {
         if (_skimTab.value == tab) return
         _skimTab.value = tab
-        loadFeed(tab)
+        if (tab == SkimTab.EXPLORE && _exploreCategories.value.isEmpty()) {
+            loadExploreData()
+        }
     }
 
+    /**
+     * Bug 6 Fix: Refresh button actually fetches fresh, varied tracks rather than
+     * reloading the identical static 5 songs!
+     */
     fun refreshFeed() {
-        loadFeed(_skimTab.value)
+        refreshCounter++
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                if (_skimTab.value == SkimTab.FOR_YOU) {
+                    // Fetch mixed shelf or chart shelf based on refresh counter
+                    if (refreshCounter % 2 == 1) {
+                        homeRepository.getNewRelease("New Releases", "Videos").collect { res ->
+                            if (res is Resource.Success && !res.data.isNullOrEmpty()) {
+                                val list = res.data!!.flatMap { it.contents }.filterNotNull().map { it.toTrack() }.shuffled()
+                                if (list.isNotEmpty()) {
+                                    _tracks.value = list
+                                    _currentIndex.value = 0
+                                    playTrackAt(0)
+                                }
+                            }
+                        }
+                    } else {
+                        homeRepository.getHomeData(viewString = "views", songString = "songs").collect { res ->
+                            if (res is Resource.Success) {
+                                val shelves = res.data?.second ?: emptyList()
+                                val list = shelves.flatMap { it.contents }.filterNotNull().map { it.toTrack() }.shuffled()
+                                if (list.isNotEmpty()) {
+                                    _tracks.value = list
+                                    _currentIndex.value = 0
+                                    playTrackAt(0)
+                                }
+                            }
+                        }
+                    }
+                } else {
+                    loadExploreData(_selectedGenre.value)
+                }
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+        }
     }
 
     fun loadFeed(tab: SkimTab = _skimTab.value) {
         viewModelScope.launch(Dispatchers.IO) {
             try {
-                if (tab == SkimTab.FOR_YOU) {
-                    homeRepository.getHomeData(viewString = "views", songString = "songs").collect { resource ->
-                        if (resource is Resource.Success) {
-                            val homeItems = resource.data?.second ?: emptyList()
-                            val list = mutableListOf<Track>()
-                            homeItems.forEach { section ->
-                                section.contents.forEach { content ->
-                                    if (content != null && !content.videoId.isNullOrBlank()) {
-                                        list.add(content.toTrack())
-                                    }
+                homeRepository.getHomeData(viewString = "views", songString = "songs").collect { resource ->
+                    if (resource is Resource.Success) {
+                        val homeItems = resource.data?.second ?: emptyList()
+                        val list = mutableListOf<Track>()
+                        homeItems.forEach { section ->
+                            section.contents.forEach { content ->
+                                if (content != null && !content.videoId.isNullOrBlank()) {
+                                    list.add(content.toTrack())
                                 }
-                            }
-                            if (list.isNotEmpty()) {
-                                _tracks.value = list
-                                _currentIndex.value = 0
-                                playTrackAt(0)
                             }
                         }
-                    }
-                } else {
-                    // EXPLORE: Trending / New releases
-                    homeRepository.getNewRelease("New Releases", "Music Videos").collect { resource ->
-                        if (resource is Resource.Success) {
-                            val items = resource.data ?: emptyList()
-                            val list = mutableListOf<Track>()
-                            items.forEach { section ->
-                                section.contents.forEach { content ->
-                                    if (content != null && !content.videoId.isNullOrBlank()) {
-                                        list.add(content.toTrack())
-                                    }
-                                }
-                            }
-                            if (list.isNotEmpty()) {
-                                _tracks.value = list
-                                _currentIndex.value = 0
-                                playTrackAt(0)
-                            }
+                        if (list.isNotEmpty()) {
+                            _tracks.value = list
+                            _currentIndex.value = 0
+                            playTrackAt(0)
                         }
                     }
                 }
@@ -166,7 +226,83 @@ class SkimViewModel(
         }
     }
 
+    fun selectGenre(genre: String) {
+        _selectedGenre.value = genre
+        loadExploreData(genre)
+    }
+
+    /**
+     * Bug 10: Rich YouTube Music style Explore screen with categorized carousels
+     */
+    fun loadExploreData(genre: String = "All") {
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                val categories = mutableListOf<ExploreCategory>()
+
+                // 1. New Releases
+                homeRepository.getNewRelease("New Releases", "Music Videos").collect { res ->
+                    if (res is Resource.Success && !res.data.isNullOrEmpty()) {
+                        val tracks = res.data!!.flatMap { it.contents }.filterNotNull().map { it.toTrack() }
+                        if (tracks.isNotEmpty()) {
+                            categories.add(ExploreCategory("🔥 New Releases", tracks.take(12)))
+                        }
+                    }
+                }
+
+                // 2. Charts / Trending
+                homeRepository.getHomeData(viewString = "views", songString = "songs").collect { res ->
+                    if (res is Resource.Success) {
+                        val shelves = res.data?.second ?: emptyList()
+                        val chartShelf = shelves.find {
+                            it.title.contains("chart", ignoreCase = true) ||
+                            it.title.contains("trending", ignoreCase = true) ||
+                            it.title.contains("top", ignoreCase = true)
+                        }
+                        val chartTracks = (chartShelf?.contents ?: shelves.firstOrNull()?.contents)
+                            ?.filterNotNull()
+                            ?.map { it.toTrack() } ?: emptyList()
+                        if (chartTracks.isNotEmpty()) {
+                            categories.add(ExploreCategory("📈 Top Trending Charts", chartTracks.take(12)))
+                        }
+                    }
+                }
+
+                // 3. Recommended & Quick Picks
+                homeRepository.getHomeData(viewString = "views", songString = "songs").collect { res ->
+                    if (res is Resource.Success) {
+                        val shelves = res.data?.second ?: emptyList()
+                        shelves.take(3).forEach { shelf ->
+                            val tracks = shelf.contents.filterNotNull().map { it.toTrack() }
+                            if (tracks.isNotEmpty()) {
+                                val title = shelf.title.ifBlank { "Recommended For You" }
+                                categories.add(ExploreCategory(title, tracks.take(10)))
+                            }
+                        }
+                    }
+                }
+
+                if (categories.isNotEmpty()) {
+                    _exploreCategories.value = categories
+                }
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+        }
+    }
+
     private fun observePlayback() {
+        // Bug 12: Autoplay next track when a song reaches the end!
+        viewModelScope.launch {
+            mediaPlayerHandler.simpleMediaState.collectLatest { state ->
+                if (state is SimpleMediaState.Ended) {
+                    val nextIdx = _currentIndex.value + 1
+                    if (nextIdx < _tracks.value.size) {
+                        playTrackAt(nextIdx)
+                    }
+                }
+            }
+        }
+
         viewModelScope.launch {
             mediaPlayerHandler.nowPlayingState
                 .distinctUntilChangedBy { it.mediaItem.mediaId }
@@ -178,7 +314,6 @@ class SkimViewModel(
                         if (foundIndex >= 0) {
                             _currentIndex.value = foundIndex
                         } else {
-                            // Started playing externally from Search / Library
                             val newTrack = state.track ?: createFallbackTrack(state)
                             _tracks.value = listOf(newTrack)
                             _currentIndex.value = 0
@@ -186,25 +321,45 @@ class SkimViewModel(
                         }
 
                         // Canvas
-                        fetchCanvas(videoId)
+                        val currentTrack = _tracks.value.getOrNull(_currentIndex.value)
+                        val duration = currentTrack?.durationSeconds ?: 0
+                        fetchCanvas(videoId, duration)
 
                         // Synchronized Lyrics
-                        val currentTrack = _tracks.value.getOrNull(_currentIndex.value)
                         val artist = currentTrack?.artists?.firstOrNull()?.name ?: state.mediaItem.metadata.artist ?: ""
                         val title = currentTrack?.title ?: state.mediaItem.metadata.title ?: ""
-                        val duration = currentTrack?.durationSeconds ?: 0
                         fetchLyrics(videoId, artist, title, duration)
                     }
                 }
         }
     }
 
-    private fun fetchCanvas(videoId: String) {
+    /**
+     * Bug 8: Fetches both Spotify Canvas and Apple Music animated artwork
+     */
+    private fun fetchCanvas(videoId: String, durationSeconds: Int) {
         viewModelScope.launch(Dispatchers.IO) {
+            _currentCanvas.value = null
             try {
-                lyricsCanvasRepository.getAMAnimatedArtwork(videoId).collect { res ->
-                    if (res is Resource.Success) {
-                        _currentCanvas.value = res.data
+                val canvasEnabled = dataStoreManager.spotifyCanvas.first() == DataStoreManager.Values.TRUE
+                if (canvasEnabled) {
+                    // Try Spotify Canvas first
+                    var found = false
+                    lyricsCanvasRepository.getCanvas(dataStoreManager, videoId, durationSeconds).collect { res ->
+                        val payload = res.data
+                        if (res is Resource.Success && payload != null) {
+                            _currentCanvas.value = payload
+                            found = true
+                        }
+                    }
+                    if (found) return@launch
+
+                    // Fallback: AM Animated artwork
+                    lyricsCanvasRepository.getAMAnimatedArtwork(videoId).collect { res ->
+                        val payload = res.data
+                        if (res is Resource.Success && payload != null) {
+                            _currentCanvas.value = payload
+                        }
                     }
                 }
             } catch (_: Exception) {
@@ -281,13 +436,18 @@ class SkimViewModel(
         }
     }
 
+    /**
+     * Bug 12: Adds all remaining tracks to MediaPlayerHandler so ExoPlayer
+     * autoplays to the next song automatically!
+     */
     fun playTrackAt(index: Int) {
         val trackList = _tracks.value
         if (index in trackList.indices) {
             _currentIndex.value = index
-            val track = trackList[index]
+            val itemsToQueue = trackList.drop(index).map { it.toGenericMediaItem() }
             mediaPlayerHandler.clearMediaItems()
-            mediaPlayerHandler.addMediaItem(track.toGenericMediaItem(), playWhenReady = true)
+            mediaPlayerHandler.addMediaItemList(itemsToQueue)
+            mediaPlayerHandler.playMediaItemInMediaSource(0)
         }
     }
 
@@ -313,7 +473,11 @@ class SkimViewModel(
                         val radioTracks = resource.data?.first ?: emptyList()
                         val filtered = radioTracks.filter { it.videoId != videoId }
                         if (filtered.isNotEmpty()) {
-                            _tracks.value = listOf(initialTrack) + filtered
+                            val fullQueue = listOf(initialTrack) + filtered
+                            _tracks.value = fullQueue
+                            // Append upcoming tracks to ExoPlayer so autoplay continues seamlessly!
+                            val upcomingMediaItems = filtered.map { it.toGenericMediaItem() }
+                            mediaPlayerHandler.addMediaItemList(upcomingMediaItems)
                         }
                     }
                 }
@@ -340,15 +504,42 @@ class SkimViewModel(
         mediaPlayerHandler.player.seekTo(positionMs)
     }
 
+    // Bug 5: Liked songs immediate reactive update + Room persistence
     fun toggleLike(track: Track) {
+        val isCurrentlyLiked = _likedVideoIds.value.contains(track.videoId)
+        // Immediately update in-memory state for instant UI response
+        val updatedSet = _likedVideoIds.value.toMutableSet()
+        if (isCurrentlyLiked) {
+            updatedSet.remove(track.videoId)
+        } else {
+            updatedSet.add(track.videoId)
+        }
+        _likedVideoIds.value = updatedSet
+
         viewModelScope.launch(Dispatchers.IO) {
-            val currentlyLiked = _likedVideoIds.value.contains(track.videoId)
-            if (currentlyLiked) {
+            if (isCurrentlyLiked) {
                 songRepository.updateLikeStatus(track.videoId, 0)
             } else {
                 val songEntity = track.toSongEntity().copy(liked = true, likeStatus = "LIKE")
                 songRepository.insertSong(songEntity).collect {}
                 songRepository.updateLikeStatus(track.videoId, 1)
+            }
+        }
+    }
+
+    // Bug 4: Offline downloads integration
+    fun toggleDownload(track: Track) {
+        viewModelScope.launch(Dispatchers.IO) {
+            val videoId = track.videoId
+            val isDownloaded = _downloadedVideoIds.value.contains(videoId)
+            if (isDownloaded) {
+                downloadHandler.removeDownload(videoId)
+                songRepository.updateDownloadState(videoId, DownloadState.STATE_NOT_DOWNLOADED)
+            } else {
+                val thumbnail = track.thumbnails?.lastOrNull()?.url ?: ""
+                val entity = track.toSongEntity().copy(downloadState = DownloadState.STATE_PREPARING)
+                songRepository.insertSong(entity).collect {}
+                downloadHandler.downloadTrack(videoId, track.title, thumbnail)
             }
         }
     }
