@@ -55,7 +55,7 @@ class UpdatePreferences(context: Context) {
     }
 
     companion object {
-        private const val PREFS_NAME = "kazatune_update_prefs"
+        private const val PREFS_NAME = "skimmusic_update_prefs"
         private const val KEY_AUTO_UPDATE_ENABLED = "auto_update_enabled"
         private const val KEY_LAST_CHECKED_TIMESTAMP = "last_checked_timestamp"
         private const val KEY_DISMISSED_VERSION = "dismissed_version"

@@ -130,7 +130,7 @@ fun UpdateDialog(
                                 color = Color.White
                             )
                             Text(
-                                text = "Kazatune Music",
+                                text = "Skim Music",
                                 fontFamily = DinProFamily,
                                 fontSize = 12.sp,
                                 color = Color(0x88FFFFFF)

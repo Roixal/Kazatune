@@ -477,6 +477,12 @@ class SkimViewModel(
                             _tracks.value = listOf(newTrack)
                             _currentIndex.value = 0
                             fetchRadioQueue(videoId, newTrack)
+                        } else {
+                            val newTrack = state.track ?: createFallbackTrack(state)
+                            val merged = listOf(newTrack) + currentList.filter { it.videoId != videoId }
+                            _tracks.value = merged
+                            _currentIndex.value = 0
+                            fetchRadioQueue(videoId, newTrack)
                         }
 
                         // Canvas

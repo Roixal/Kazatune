@@ -16,10 +16,13 @@ private val DarkColorScheme = darkColorScheme(
 )
 
 @Composable
-fun KazatuneTheme(content: @Composable () -> Unit) {
+fun SkimMusicTheme(content: @Composable () -> Unit) {
     MaterialTheme(
         colorScheme = DarkColorScheme,
         typography = RessoTypography,
         content = content
     )
 }
+
+@Composable
+fun KazatuneTheme(content: @Composable () -> Unit) = SkimMusicTheme(content)

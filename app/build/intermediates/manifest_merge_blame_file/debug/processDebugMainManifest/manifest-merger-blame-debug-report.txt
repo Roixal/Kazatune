@@ -1,8 +1,8 @@
 1<?xml version="1.0" encoding="utf-8"?>
 2<manifest xmlns:android="http://schemas.android.com/apk/res/android"
 3    package="com.kazatune.debug"
-4    android:versionCode="1"
-5    android:versionName="1.0.0" >
+4    android:versionCode="2"
+5    android:versionName="1.0.1" >
 6
 7    <uses-sdk
 7-->INJECTED
@@ -72,8 +72,8 @@
 37
 38    <application
 38-->/Users/krixh.../Desktop/Skim/app/src/main/AndroidManifest.xml:18:5-136:19
-39        android:name="com.kazatune.KazatuneApp"
-39-->/Users/krixh.../Desktop/Skim/app/src/main/AndroidManifest.xml:19:9-36
+39        android:name="com.kazatune.SkimMusicApp"
+39-->/Users/krixh.../Desktop/Skim/app/src/main/AndroidManifest.xml:19:9-37
 40        android:allowBackup="true"
 40-->/Users/krixh.../Desktop/Skim/app/src/main/AndroidManifest.xml:20:9-35
 41        android:appCategory="audio"
@@ -93,8 +93,8 @@
 48-->/Users/krixh.../Desktop/Skim/app/src/main/AndroidManifest.xml:25:9-54
 49        android:supportsRtl="true"
 49-->/Users/krixh.../Desktop/Skim/app/src/main/AndroidManifest.xml:26:9-35
-50        android:theme="@style/Theme.Kazatune"
-50-->/Users/krixh.../Desktop/Skim/app/src/main/AndroidManifest.xml:27:9-46
+50        android:theme="@style/Theme.SkimMusic"
+50-->/Users/krixh.../Desktop/Skim/app/src/main/AndroidManifest.xml:27:9-47
 51        android:usesCleartextTraffic="true" >
 51-->/Users/krixh.../Desktop/Skim/app/src/main/AndroidManifest.xml:28:9-44
 52        <activity
@@ -107,8 +107,8 @@
 55-->/Users/krixh.../Desktop/Skim/app/src/main/AndroidManifest.xml:33:13-36
 56            android:launchMode="singleTask"
 56-->/Users/krixh.../Desktop/Skim/app/src/main/AndroidManifest.xml:36:13-44
-57            android:theme="@style/Theme.Kazatune"
-57-->/Users/krixh.../Desktop/Skim/app/src/main/AndroidManifest.xml:37:13-50
+57            android:theme="@style/Theme.SkimMusic"
+57-->/Users/krixh.../Desktop/Skim/app/src/main/AndroidManifest.xml:37:13-51
 58            android:windowSoftInputMode="adjustResize" >
 58-->/Users/krixh.../Desktop/Skim/app/src/main/AndroidManifest.xml:35:13-55
 59            <intent-filter>

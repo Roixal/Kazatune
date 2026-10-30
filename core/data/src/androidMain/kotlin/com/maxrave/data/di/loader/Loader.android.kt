@@ -7,5 +7,5 @@ actual fun loadMediaService() {
 }
 
 actual fun loadLoginSyncModule() {
-    // No-op for standalone Kazatune Android app
+    // No-op for standalone Skim Music Android app
 }
