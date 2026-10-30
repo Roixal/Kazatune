@@ -54,6 +54,7 @@ string widget_recently_added
 string widget_turntable_description
 string widget_turntable_label
 style Theme_Kazatune
+style Theme_SkimMusic
 xml file_paths
 xml insights_widget_info
 xml playlists_widget_info

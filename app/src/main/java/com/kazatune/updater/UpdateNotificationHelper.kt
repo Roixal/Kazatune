@@ -28,7 +28,7 @@ class UpdateNotificationHelper(private val context: Context) {
                 "App Updates",
                 NotificationManager.IMPORTANCE_DEFAULT
             ).apply {
-                description = "Notifications when a newer version of Kazatune is released"
+                description = "Notifications when a newer version of Skim Music is released"
                 enableLights(true)
                 setShowBadge(true)
             }
@@ -62,7 +62,7 @@ class UpdateNotificationHelper(private val context: Context) {
 
         val notification = NotificationCompat.Builder(context, CHANNEL_ID)
             .setSmallIcon(android.R.drawable.stat_sys_download_done)
-            .setContentTitle("Kazatune Update Available!")
+            .setContentTitle("Skim Music Update Available!")
             .setContentText("Version ${release.versionName} is ready. Update now to enjoy the latest improvements.")
             .setStyle(
                 NotificationCompat.BigTextStyle()
@@ -82,7 +82,7 @@ class UpdateNotificationHelper(private val context: Context) {
     }
 
     companion object {
-        const val CHANNEL_ID = "kazatune_updates_channel"
+        const val CHANNEL_ID = "skimmusic_updates_channel"
         const val NOTIFICATION_ID = 8801
         const val EXTRA_SHOW_UPDATE = "extra_show_update"
         const val EXTRA_UPDATE_VERSION = "extra_update_version"

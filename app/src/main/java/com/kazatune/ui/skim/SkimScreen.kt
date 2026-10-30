@@ -282,15 +282,22 @@ fun SkimScreen(
                     pageCount = { tracks.size }
                 )
 
-                LaunchedEffect(currentIndex) {
-                    if (currentIndex in tracks.indices && pagerState.currentPage != currentIndex) {
-                        pagerState.animateScrollToPage(currentIndex)
+                // Instantly sync pager to currently playing track whenever entering SkimScreen
+                LaunchedEffect(Unit) {
+                    val activeIndex = skimViewModel.currentIndex.value
+                    if (activeIndex in tracks.indices && pagerState.currentPage != activeIndex) {
+                        pagerState.scrollToPage(activeIndex)
                     }
                 }
 
-                LaunchedEffect(isRefreshing) {
-                    if (!isRefreshing && tracks.isNotEmpty() && pagerState.currentPage != 0) {
-                        pagerState.scrollToPage(0)
+                // Sync pager to currentIndex changes (e.g., skip next/prev, queue tap)
+                LaunchedEffect(currentIndex) {
+                    if (currentIndex in tracks.indices && pagerState.currentPage != currentIndex) {
+                        if (kotlin.math.abs(pagerState.currentPage - currentIndex) <= 1) {
+                            pagerState.animateScrollToPage(currentIndex)
+                        } else {
+                            pagerState.scrollToPage(currentIndex)
+                        }
                     }
                 }
 

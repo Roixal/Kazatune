@@ -34,14 +34,14 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.kazatune.ui.component.KazatuneBottomBar
 import com.kazatune.ui.component.MainTab
 import com.kazatune.ui.component.MiniPlayerBar
+import com.kazatune.ui.component.SkimMusicBottomBar
 import com.kazatune.ui.library.LibraryScreen
 import com.kazatune.ui.search.SearchScreen
 import com.kazatune.ui.settings.SettingsScreen
 import com.kazatune.ui.skim.SkimScreen
-import com.kazatune.ui.theme.KazatuneTheme
+import com.kazatune.ui.theme.SkimMusicTheme
 import com.kazatune.viewmodel.SkimViewModel
 import org.koin.androidx.compose.koinViewModel
 
@@ -75,7 +75,7 @@ class MainActivity : ComponentActivity() {
         }
 
         setContent {
-            KazatuneTheme {
+            SkimMusicTheme {
                 MainRootScreen()
             }
         }
@@ -173,13 +173,21 @@ fun MainRootScreen(
                     nowPlaying = nowPlaying,
                     isPlaying = controlState.isPlaying,
                     onTogglePlayPause = { skimViewModel.togglePlayPause() },
-                    onClick = { currentTab = MainTab.SKIM }
+                    onClick = {
+                        skimViewModel.selectSkimTab(com.kazatune.viewmodel.SkimTab.FOR_YOU)
+                        currentTab = MainTab.SKIM
+                    }
                 )
             }
 
-            KazatuneBottomBar(
+            SkimMusicBottomBar(
                 currentTab = currentTab,
-                onTabSelected = { currentTab = it }
+                onTabSelected = { tab ->
+                    if (tab == MainTab.SKIM && currentTab != MainTab.SKIM) {
+                        skimViewModel.selectSkimTab(com.kazatune.viewmodel.SkimTab.FOR_YOU)
+                    }
+                    currentTab = tab
+                }
             )
         }
 

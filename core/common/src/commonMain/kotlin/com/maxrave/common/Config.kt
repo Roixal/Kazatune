@@ -256,7 +256,7 @@ object SUPPORTED_LANGUAGE {
 }
 
 /**
- * The YouTube stream format ids (`itag`) Kazatune asks for, in one place.
+ * The YouTube stream format ids (`itag`) Skim Music asks for, in one place.
  *
  * YouTube publishes dozens; these are the handful the player, the downloader and the extractor
  * health-check all have to agree on. Every itag reference belongs here — a bare number inside a

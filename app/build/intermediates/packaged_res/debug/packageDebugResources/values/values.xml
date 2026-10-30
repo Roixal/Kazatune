@@ -19,7 +19,8 @@
     <string name="widget_recently_added">Recently added</string>
     <string name="widget_turntable_description">Album art with play and skip</string>
     <string name="widget_turntable_label">Turntable</string>
-    <style name="Theme.Kazatune" parent="android:Theme.Material.NoActionBar">
+    <style name="Theme.Kazatune" parent="Theme.SkimMusic"/>
+    <style name="Theme.SkimMusic" parent="android:Theme.Material.NoActionBar">
         <item name="android:statusBarColor">@android:color/transparent</item>
         <item name="android:navigationBarColor">@android:color/transparent</item>
         <item name="android:windowBackground">#FF000000</item>

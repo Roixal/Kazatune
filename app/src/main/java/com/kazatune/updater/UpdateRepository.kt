@@ -70,7 +70,7 @@ class UpdateRepository(
             val request = Request.Builder()
                 .url(LATEST_RELEASE_API)
                 .header("Accept", "application/vnd.github.v3+json")
-                .header("User-Agent", "Kazatune-Android-Updater")
+                .header("User-Agent", "SkimMusic-Android-Updater")
                 .build()
 
             val response = httpClient.newCall(request).execute()
@@ -155,7 +155,7 @@ class UpdateRepository(
 
         return ReleaseInfo(
             tagName = tagName,
-            name = if (name.isNotBlank()) name else "Kazatune $versionName",
+            name = if (name.isNotBlank()) name else "Skim Music $versionName",
             versionName = versionName,
             body = body,
             htmlUrl = htmlUrl,
@@ -185,14 +185,14 @@ class UpdateRepository(
         }
 
         val updatesDir = File(context.cacheDir, "updates").apply { mkdirs() }
-        val targetFileName = release.apkFileName ?: "Kazatune-${release.versionName}.apk"
+        val targetFileName = release.apkFileName ?: "SkimMusic-${release.versionName}.apk"
         val outputFile = File(updatesDir, targetFileName)
         val tempFile = File(updatesDir, "$targetFileName.download")
 
         try {
             val request = Request.Builder()
                 .url(downloadUrl)
-                .header("User-Agent", "Kazatune-Android-Updater")
+                .header("User-Agent", "SkimMusic-Android-Updater")
                 .build()
 
             val response = httpClient.newCall(request).execute()

@@ -91,7 +91,7 @@ fun AppUpdatesCard(
 
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
-                        text = "Kazatune Version: v$currentVersion",
+                        text = "Skim Music Version: v$currentVersion",
                         fontFamily = DinProFamily,
                         fontSize = 15.sp,
                         fontWeight = FontWeight.SemiBold,

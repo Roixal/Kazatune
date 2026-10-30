@@ -304,13 +304,13 @@ MERGED from [androidx.versionedparcelable:versionedparcelable:1.1.1] /Users/krix
 	android:allowBackup
 		ADDED from /Users/krixh.../Desktop/Skim/app/src/main/AndroidManifest.xml:20:9-35
 	android:theme
-		ADDED from /Users/krixh.../Desktop/Skim/app/src/main/AndroidManifest.xml:27:9-46
+		ADDED from /Users/krixh.../Desktop/Skim/app/src/main/AndroidManifest.xml:27:9-47
 	android:isGame
 		ADDED from /Users/krixh.../Desktop/Skim/app/src/main/AndroidManifest.xml:22:9-31
 	android:usesCleartextTraffic
 		ADDED from /Users/krixh.../Desktop/Skim/app/src/main/AndroidManifest.xml:28:9-44
 	android:name
-		ADDED from /Users/krixh.../Desktop/Skim/app/src/main/AndroidManifest.xml:19:9-36
+		ADDED from /Users/krixh.../Desktop/Skim/app/src/main/AndroidManifest.xml:19:9-37
 activity#com.kazatune.MainActivity
 ADDED from /Users/krixh.../Desktop/Skim/app/src/main/AndroidManifest.xml:31:9-58:20
 	android:launchMode
@@ -322,7 +322,7 @@ ADDED from /Users/krixh.../Desktop/Skim/app/src/main/AndroidManifest.xml:31:9-58
 	android:configChanges
 		ADDED from /Users/krixh.../Desktop/Skim/app/src/main/AndroidManifest.xml:34:13-87
 	android:theme
-		ADDED from /Users/krixh.../Desktop/Skim/app/src/main/AndroidManifest.xml:37:13-50
+		ADDED from /Users/krixh.../Desktop/Skim/app/src/main/AndroidManifest.xml:37:13-51
 	android:name
 		ADDED from /Users/krixh.../Desktop/Skim/app/src/main/AndroidManifest.xml:32:13-41
 intent-filter#action:name:android.intent.action.MAIN+action:name:android.intent.action.MUSIC_PLAYER+action:name:android.intent.action.VIEW+category:name:android.intent.category.APP_MUSIC+category:name:android.intent.category.DEFAULT+category:name:android.intent.category.LAUNCHER

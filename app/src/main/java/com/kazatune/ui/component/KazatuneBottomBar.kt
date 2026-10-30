@@ -46,7 +46,7 @@ enum class MainTab(val title: String, val icon: ImageVector) {
 }
 
 @Composable
-fun KazatuneBottomBar(
+fun SkimMusicBottomBar(
     currentTab: MainTab,
     onTabSelected: (MainTab) -> Unit,
     modifier: Modifier = Modifier
@@ -112,3 +112,10 @@ fun KazatuneBottomBar(
         }
     }
 }
+
+@Composable
+fun KazatuneBottomBar(
+    currentTab: MainTab,
+    onTabSelected: (MainTab) -> Unit,
+    modifier: Modifier = Modifier
+) = SkimMusicBottomBar(currentTab, onTabSelected, modifier)
