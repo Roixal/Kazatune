@@ -1173,7 +1173,7 @@ fun AboutScreen(
 
                         Spacer(modifier = Modifier.height(14.dp))
                         Text(
-                            text = "A next-generation music streaming experience blending TikTok and Resso's fluid vertical discovery feed with Apple's Liquid Glass aesthetics and the entire YouTube Music catalog.",
+                            text = "A next-generation music streaming experience blending fluid vertical discovery feed with Apple's Liquid Glass aesthetics and the entire YouTube Music catalog without Ads.",
                             fontFamily = DinProFamily,
                             fontSize = 13.sp,
                             color = Color(0xCCFFFFFF),
@@ -1316,7 +1316,7 @@ fun AboutScreen(
                                 .clickable {
                                     val intent = Intent(
                                         Intent.ACTION_VIEW,
-                                        Uri.parse("https://github.com/kkrriish10")
+                                        Uri.parse("https://github.com/krixh15")
                                     )
                                     context.startActivity(intent)
                                 }
@@ -1344,7 +1344,7 @@ fun AboutScreen(
                                             color = Color.White
                                         )
                                         AsyncImage(
-                                            model = "https://github.com/kkrriish10.png",
+                                            model = "https://github.com/krixh15.png",
                                             contentDescription = "KRISH KUMAR",
                                             contentScale = ContentScale.Crop,
                                             modifier = Modifier.fillMaxSize()
@@ -1368,7 +1368,7 @@ fun AboutScreen(
                                     }
                                 }
                                 Text(
-                                    text = "Developer",
+                                    text = "Founder/Developer",
                                     fontFamily = DinProFamily,
                                     fontSize = 12.sp,
                                     color = RessoAccent,
@@ -1440,7 +1440,7 @@ fun AboutScreen(
                                     }
                                 }
                                 Text(
-                                    text = "Developer",
+                                    text = "Co-Founder/Developer",
                                     fontFamily = DinProFamily,
                                     fontSize = 12.sp,
                                     color = RessoAccent,
