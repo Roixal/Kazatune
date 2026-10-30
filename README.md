@@ -109,43 +109,6 @@ Skim/
 
 ---
 
-## 🚀 Building & Installation
-
-### Prerequisites
-* **Android Studio:** Hedgehog (2023.1.1) or newer
-* **JDK:** Java 17 or higher
-* **Android SDK:** Compile SDK 34 / Minimum SDK 26
-
-### Step-by-Step Setup
-
-1. **Clone the repository:**
-   ```bash
-   git clone https://github.com/your-username/Skim.git
-   cd Skim
-   ```
-
-2. **Configure Local Environment:**
-   Ensure your `local.properties` file points to your local Android SDK:
-   ```properties
-   sdk.dir=/Users/YOUR_USER/Library/Android/sdk
-   ```
-
-3. **Build the Debug APK:**
-   ```bash
-   ./gradlew assembleDebug
-   ```
-
-4. **Locate or Install the APK:**
-   * After building, the compiled package is available at:
-     ```
-     app/build/outputs/apk/debug/app-debug.apk
-     ```
-   * Or install directly to a connected device/emulator via ADB:
-     ```bash
-     adb install -r app/build/outputs/apk/debug/app-debug.apk
-     ```
-
----
 
 ## 🎮 Gestures & Shortcuts Quick Reference
 
@@ -178,5 +141,5 @@ Distributed under the **GNU General Public License v3.0**. See `LICENSE` for mor
 ---
 
 <p align="center">
-  Crafted with ❤️ for music lovers everywhere.
+  Crafted with ❤️ for music lovers everywhere by Krishhh....
 </p>
