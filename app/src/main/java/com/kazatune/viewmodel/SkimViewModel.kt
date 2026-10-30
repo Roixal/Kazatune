@@ -15,7 +15,10 @@ import com.maxrave.domain.mediaservice.handler.DownloadHandler
 import com.maxrave.domain.mediaservice.handler.MediaPlayerHandler
 import com.maxrave.domain.mediaservice.handler.NowPlayingTrackState
 import com.maxrave.domain.mediaservice.handler.PlayerEvent
+import com.maxrave.domain.mediaservice.handler.PlaylistType
+import com.maxrave.domain.mediaservice.handler.QueueData
 import com.maxrave.domain.mediaservice.handler.SimpleMediaState
+import com.maxrave.domain.mediaservice.handler.ToastType
 import com.maxrave.domain.repository.HomeRepository
 import com.maxrave.domain.repository.LyricsCanvasRepository
 import com.maxrave.domain.repository.SongRepository
@@ -37,10 +40,12 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 enum class SkimTab {
     FOR_YOU,
-    EXPLORE
+    EXPLORE,
+    MOODS
 }
 
 data class ExploreCategory(
@@ -94,6 +99,16 @@ class SkimViewModel(
     private val _downloadingVideoIds = MutableStateFlow<Set<String>>(emptySet())
     val downloadingVideoIds: StateFlow<Set<String>> = _downloadingVideoIds.asStateFlow()
 
+    // Active Mood Chip Filter (Component 5)
+    private val _activeMood = MutableStateFlow("⚡ All")
+    val activeMood: StateFlow<String> = _activeMood.asStateFlow()
+
+    private val _moodTracks = MutableStateFlow<List<Track>>(emptyList())
+    val moodTracks: StateFlow<List<Track>> = _moodTracks.asStateFlow()
+
+    private val _isMoodLoading = MutableStateFlow(false)
+    val isMoodLoading: StateFlow<Boolean> = _isMoodLoading.asStateFlow()
+
     // Rich Explore Shelves
     private val _exploreCategories = MutableStateFlow<List<ExploreCategory>>(emptyList())
     val exploreCategories: StateFlow<List<ExploreCategory>> = _exploreCategories.asStateFlow()
@@ -101,29 +116,58 @@ class SkimViewModel(
     private val _selectedGenre = MutableStateFlow("All")
     val selectedGenre: StateFlow<String> = _selectedGenre.asStateFlow()
 
+    // Return YouTube Dislike State
+    private val _dislikeCount = MutableStateFlow<Int?>(null)
+    val dislikeCount: StateFlow<Int?> = _dislikeCount.asStateFlow()
+
+    private val _isDisliked = MutableStateFlow(false)
+    val isDisliked: StateFlow<Boolean> = _isDisliked.asStateFlow()
+
+    // SponsorBlock Skipping & Toast
+    private val _sponsorBlockToast = MutableStateFlow<String?>(null)
+    val sponsorBlockToast: StateFlow<String?> = _sponsorBlockToast.asStateFlow()
+
+    private val _sponsorBlockEnabled = MutableStateFlow(true)
+    val sponsorBlockEnabled: StateFlow<Boolean> = _sponsorBlockEnabled.asStateFlow()
+
+    // Synced Lyrics Timing Offset Calibration (ms)
+    private val _lyricsOffsetMs = MutableStateFlow(0L)
+    val lyricsOffsetMs: StateFlow<Long> = _lyricsOffsetMs.asStateFlow()
+
     private var lyricsJob: Job? = null
     private var radioJob: Job? = null
     private var progressTickerJob: Job? = null
     private var refreshCounter = 0
+    private var loadingMore = false
+    private var lastScrobbledVideoId: String? = null
+    private var trackStartEpochSeconds: Long = 0L
 
     init {
         loadFeed(SkimTab.FOR_YOU)
         observeLikedAndDownloaded()
         observePlayback()
+        observeSponsorBlock()
         startPositionTicker()
-        loadExploreData()
+        // explore data is lazy-loaded when the user selects Explore tab
     }
 
     private fun startPositionTicker() {
         progressTickerJob?.cancel()
         progressTickerJob = viewModelScope.launch(Dispatchers.Main) {
             while (isActive) {
-                val player = mediaPlayerHandler.player
-                _currentPositionMs.value = player.currentPosition
-                if (player.duration > 0) {
-                    _totalDurationMs.value = player.duration
+                if (controlState.value.isPlaying) {
+                    val player = mediaPlayerHandler.player
+                    val pos = player.currentPosition
+                    if (pos >= 0) {
+                        _currentPositionMs.value = pos
+                    }
+                    val dur = player.duration
+                    if (dur > 0) {
+                        _totalDurationMs.value = dur
+                    }
+                    checkLastFmScrobble(pos, dur)
                 }
-                delay(250)
+                delay(200)
             }
         }
     }
@@ -153,6 +197,8 @@ class SkimViewModel(
         _skimTab.value = tab
         if (tab == SkimTab.EXPLORE && _exploreCategories.value.isEmpty()) {
             loadExploreData()
+        } else if (tab == SkimTab.MOODS && _moodTracks.value.isEmpty()) {
+            loadMoodTracks(_activeMood.value)
         }
     }
 
@@ -206,17 +252,67 @@ class SkimViewModel(
                     if (resource is Resource.Success) {
                         val homeItems = resource.data?.second ?: emptyList()
                         val list = mutableListOf<Track>()
+                        var firstPlaylistId: String? = null
                         homeItems.forEach { section ->
                             section.contents.forEach { content ->
-                                if (content != null && !content.videoId.isNullOrBlank()) {
-                                    list.add(content.toTrack())
+                                if (content != null) {
+                                    val vid = content.videoId ?: content.playEndpoint?.videoId
+                                    if (!vid.isNullOrBlank()) {
+                                        list.add(content.copy(videoId = vid).toTrack())
+                                    } else if (firstPlaylistId == null && !content.playlistId.isNullOrBlank()) {
+                                        firstPlaylistId = content.playlistId
+                                    }
                                 }
                             }
                         }
+                        val activeVideoId = mediaPlayerHandler.nowPlayingState.value.mediaItem.mediaId
+                        val isPlaying = controlState.value.isPlaying || activeVideoId.isNotBlank()
+
                         if (list.isNotEmpty()) {
-                            _tracks.value = list
-                            _currentIndex.value = 0
-                            playTrackAt(0)
+                            if (isPlaying && activeVideoId.isNotBlank()) {
+                                // Align currently playing song so artwork matches what is playing 100%!
+                                val foundIdx = list.indexOfFirst { it.videoId == activeVideoId }
+                                if (foundIdx >= 0) {
+                                    _tracks.value = list
+                                    _currentIndex.value = foundIdx
+                                } else {
+                                    val currentTrack = _tracks.value.firstOrNull { it.videoId == activeVideoId }
+                                        ?: mediaPlayerHandler.nowPlayingState.value.track
+                                        ?: createFallbackTrack(mediaPlayerHandler.nowPlayingState.value)
+                                    val mergedList = listOf(currentTrack) + list.filter { it.videoId != activeVideoId }
+                                    _tracks.value = mergedList
+                                    _currentIndex.value = 0
+                                }
+                                mediaPlayerHandler.setQueueData(
+                                    QueueData.Data(
+                                        listTracks = _tracks.value,
+                                        playlistType = PlaylistType.RADIO,
+                                        playlistId = "SKIM_FEED"
+                                    )
+                                )
+                            } else {
+                                setTracksAndPlay(list, 0)
+                            }
+                        } else if (firstPlaylistId != null && !isPlaying) {
+                            songRepository.getRadioFromEndpoint(YouTubeWatchEndpoint(playlistId = firstPlaylistId)).collect { res ->
+                                val tracks = res.data?.first
+                                if (!tracks.isNullOrEmpty()) {
+                                    setTracksAndPlay(tracks, 0)
+                                }
+                            }
+                        } else if (!isPlaying) {
+                            // Fallback to New Releases if no playlists
+                            homeRepository.getNewRelease("New Releases", "Music Videos").collect { nRes ->
+                                val nList = nRes.data?.firstOrNull()?.contents?.mapNotNull { c ->
+                                    if (c != null) {
+                                        val vid = c.videoId ?: c.playEndpoint?.videoId
+                                        if (!vid.isNullOrBlank()) c.copy(videoId = vid).toTrack() else null
+                                    } else null
+                                }
+                                if (!nList.isNullOrEmpty()) {
+                                    setTracksAndPlay(nList, 0)
+                                }
+                            }
                         }
                     }
                 }
@@ -238,6 +334,25 @@ class SkimViewModel(
         viewModelScope.launch(Dispatchers.IO) {
             try {
                 val categories = mutableListOf<ExploreCategory>()
+
+                if (genre != "All") {
+                    homeRepository.getMoodData(genre).collect { res ->
+                        if (res is Resource.Success && res.data != null) {
+                            val items = res.data!!.items
+                            items.forEach { section ->
+                                val tracks = section.contents.map { it.toTrack() }.filter { it.videoId.isNotBlank() }
+                                if (tracks.isNotEmpty()) {
+                                    val title = section.header.ifBlank { "$genre Mix" }
+                                    categories.add(ExploreCategory(title, tracks.take(12)))
+                                }
+                            }
+                        }
+                    }
+                    if (categories.isNotEmpty()) {
+                        _exploreCategories.value = categories
+                        return@launch
+                    }
+                }
 
                 // 1. New Releases
                 homeRepository.getNewRelease("New Releases", "Music Videos").collect { res ->
@@ -298,6 +413,11 @@ class SkimViewModel(
                     val nextIdx = _currentIndex.value + 1
                     if (nextIdx < _tracks.value.size) {
                         playTrackAt(nextIdx)
+                    } else {
+                        val lastTrack = _tracks.value.lastOrNull()
+                        if (lastTrack != null && !loadingMore) {
+                            fetchRadioQueue(lastTrack.videoId, lastTrack)
+                        }
                     }
                 }
             }
@@ -312,8 +432,10 @@ class SkimViewModel(
                         val currentList = _tracks.value
                         val foundIndex = currentList.indexOfFirst { it.videoId == videoId }
                         if (foundIndex >= 0) {
-                            _currentIndex.value = foundIndex
-                        } else {
+                            if (_currentIndex.value != foundIndex) {
+                                _currentIndex.value = foundIndex
+                            }
+                        } else if (currentList.isEmpty()) {
                             val newTrack = state.track ?: createFallbackTrack(state)
                             _tracks.value = listOf(newTrack)
                             _currentIndex.value = 0
@@ -329,6 +451,11 @@ class SkimViewModel(
                         val artist = currentTrack?.artists?.firstOrNull()?.name ?: state.mediaItem.metadata.artist ?: ""
                         val title = currentTrack?.title ?: state.mediaItem.metadata.title ?: ""
                         fetchLyrics(videoId, artist, title, duration)
+
+                        // Return YouTube Dislike & SponsorBlock & Last.fm
+                        fetchDislikeInfo(videoId)
+                        resetLyricsOffset()
+                        updateLastFmNowPlaying(videoId)
                     }
                 }
         }
@@ -436,18 +563,97 @@ class SkimViewModel(
         }
     }
 
+    fun setTracksAndPlay(tracks: List<Track>, initialIndex: Int = 0) {
+        if (tracks.isEmpty()) return
+        _tracks.value = tracks
+        val safeIndex = initialIndex.coerceIn(0, tracks.size - 1)
+        _currentIndex.value = safeIndex
+        val track = tracks[safeIndex]
+
+        _currentPositionMs.value = 0L
+        val durSec = track.durationSeconds ?: 0
+        if (durSec > 0) {
+            _totalDurationMs.value = durSec * 1000L
+        }
+
+        fetchCanvas(track.videoId, durSec)
+        val artist = track.artists?.firstOrNull()?.name ?: ""
+        fetchLyrics(track.videoId, artist, track.title, durSec)
+        resetLyricsOffset()
+        updateLastFmNowPlaying(track.videoId)
+
+        viewModelScope.launch(Dispatchers.Main) {
+            withContext(Dispatchers.IO) {
+                songRepository.insertSong(track.toSongEntity()).collect {}
+                track.durationSeconds?.let { songRepository.updateDurationSeconds(it, track.videoId) }
+            }
+
+            mediaPlayerHandler.setQueueData(
+                QueueData.Data(
+                    listTracks = tracks,
+                    playlistType = PlaylistType.RADIO,
+                    playlistId = "SKIM_FEED"
+                )
+            )
+
+            mediaPlayerHandler.addMediaItem(track.toGenericMediaItem(), playWhenReady = true)
+        }
+
+        listOfNotNull(
+            tracks.getOrNull(safeIndex + 1),
+            tracks.getOrNull(safeIndex + 2)
+        ).forEach { preloadTrack(it) }
+    }
+
     /**
-     * Bug 12: Adds all remaining tracks to MediaPlayerHandler so ExoPlayer
-     * autoplays to the next song automatically!
+     * Seamlessly transitions playback to the specified index without clearing
+     * or getting stuck in an asynchronous reset loop.
      */
     fun playTrackAt(index: Int) {
         val trackList = _tracks.value
-        if (index in trackList.indices) {
-            _currentIndex.value = index
-            val itemsToQueue = trackList.drop(index).map { it.toGenericMediaItem() }
-            mediaPlayerHandler.clearMediaItems()
-            mediaPlayerHandler.addMediaItemList(itemsToQueue)
-            mediaPlayerHandler.playMediaItemInMediaSource(0)
+        if (index !in trackList.indices) return
+        _currentIndex.value = index
+        val track = trackList[index]
+
+        _currentPositionMs.value = 0L
+        val durSec = track.durationSeconds ?: 0
+        if (durSec > 0) {
+            _totalDurationMs.value = durSec * 1000L
+        }
+
+        fetchCanvas(track.videoId, durSec)
+        val artist = track.artists?.firstOrNull()?.name ?: ""
+        fetchLyrics(track.videoId, artist, track.title, durSec)
+        resetLyricsOffset()
+        updateLastFmNowPlaying(track.videoId)
+
+        val currentPlayingVideoId = mediaPlayerHandler.nowPlayingState.value.mediaItem.mediaId
+        if (currentPlayingVideoId != track.videoId) {
+            viewModelScope.launch(Dispatchers.Main) {
+                withContext(Dispatchers.IO) {
+                    songRepository.insertSong(track.toSongEntity()).collect {}
+                    track.durationSeconds?.let { songRepository.updateDurationSeconds(it, track.videoId) }
+                }
+
+                mediaPlayerHandler.setQueueData(
+                    QueueData.Data(
+                        listTracks = trackList,
+                        playlistType = PlaylistType.RADIO,
+                        playlistId = "SKIM_FEED"
+                    )
+                )
+
+                mediaPlayerHandler.addMediaItem(track.toGenericMediaItem(), playWhenReady = true)
+            }
+        }
+
+        listOfNotNull(
+            trackList.getOrNull(index + 1),
+            trackList.getOrNull(index + 2)
+        ).forEach { preloadTrack(it) }
+
+        if (index >= trackList.size - 4 && !loadingMore) {
+            fetchRadioQueue(track.videoId, track)
         }
     }
 
@@ -457,39 +663,147 @@ class SkimViewModel(
      */
     fun playTrackAndStartRadio(track: Track) {
         radioJob?.cancel()
-        _tracks.value = listOf(track)
-        _currentIndex.value = 0
-        mediaPlayerHandler.clearMediaItems()
-        mediaPlayerHandler.addMediaItem(track.toGenericMediaItem(), playWhenReady = true)
+        setTracksAndPlay(listOf(track), 0)
         fetchRadioQueue(track.videoId, track)
     }
 
     private fun fetchRadioQueue(videoId: String, initialTrack: Track) {
         radioJob?.cancel()
+        loadingMore = true
         radioJob = viewModelScope.launch(Dispatchers.IO) {
             try {
                 songRepository.getRadioFromEndpoint(YouTubeWatchEndpoint(videoId = videoId)).collect { resource ->
                     if (resource is Resource.Success) {
                         val radioTracks = resource.data?.first ?: emptyList()
-                        val filtered = radioTracks.filter { it.videoId != videoId }
-                        if (filtered.isNotEmpty()) {
-                            val fullQueue = listOf(initialTrack) + filtered
-                            _tracks.value = fullQueue
-                            // Append upcoming tracks to ExoPlayer so autoplay continues seamlessly!
-                            val upcomingMediaItems = filtered.map { it.toGenericMediaItem() }
-                            mediaPlayerHandler.addMediaItemList(upcomingMediaItems)
+                        val currentList = _tracks.value
+                        val newTracks = radioTracks.filter { rt -> currentList.none { it.videoId == rt.videoId } }
+                        if (newTracks.isNotEmpty()) {
+                            val updatedList = currentList + newTracks
+                            _tracks.value = updatedList
+                            mediaPlayerHandler.setQueueData(
+                                QueueData.Data(
+                                    listTracks = updatedList,
+                                    playlistType = PlaylistType.RADIO,
+                                    playlistId = "SKIM_FEED"
+                                )
+                            )
+                            newTracks.firstOrNull()?.let { preloadTrack(it) }
                         }
                     }
                 }
             } catch (e: Exception) {
                 e.printStackTrace()
+            } finally {
+                loadingMore = false
             }
         }
     }
 
+    fun onPageSettled(index: Int) {
+        playTrackAt(index)
+    }
+
     fun onPageSwiped(pageIndex: Int) {
-        if (pageIndex != _currentIndex.value) {
-            playTrackAt(pageIndex)
+        playTrackAt(pageIndex)
+    }
+
+    /**
+     * Reloads the track if it gets stuck due to network/pipeline issues.
+     * Invoked when tapping the rotating vinyl disc.
+     */
+    fun reloadCurrentTrack() {
+        val current = _tracks.value.getOrNull(_currentIndex.value) ?: return
+        reloadTrack(current)
+    }
+
+    fun reloadTrack(track: Track) {
+        viewModelScope.launch(Dispatchers.Main) {
+            _sponsorBlockToast.value = "🔄 Reloading \"${track.title.take(20)}\"..."
+            _currentPositionMs.value = 0L
+
+            withContext(Dispatchers.IO) {
+                try {
+                    streamRepository.updateFormat(track.videoId)
+                } catch (_: Exception) {}
+                try {
+                    streamRepository.getStream(
+                        dataStoreManager = dataStoreManager,
+                        videoId = track.videoId,
+                        isDownloading = false,
+                        isVideo = false
+                    ).collect {}
+                } catch (_: Exception) {}
+            }
+
+            mediaPlayerHandler.setQueueData(
+                QueueData.Data(
+                    listTracks = _tracks.value,
+                    playlistType = PlaylistType.RADIO,
+                    playlistId = "SKIM_FEED"
+                )
+            )
+
+            mediaPlayerHandler.addMediaItem(track.toGenericMediaItem(), playWhenReady = true)
+        }
+    }
+
+    private fun preloadTrack(track: Track) {
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                // 1. Preload stream URL into cache
+                streamRepository.getStream(
+                    dataStoreManager = dataStoreManager,
+                    videoId = track.videoId,
+                    isDownloading = false,
+                    isVideo = false
+                ).collect {}
+                // 2. Preload Canvas
+                val duration = track.durationSeconds ?: 0
+                fetchCanvas(track.videoId, duration)
+                // 3. Preload Lyrics
+                val artist = track.artists?.firstOrNull()?.name ?: ""
+                fetchLyrics(track.videoId, artist, track.title, duration)
+            } catch (_: Exception) {}
+        }
+    }
+
+    // Component 4: Resso-style Hook/Chorus Jump
+    fun jumpToHook(track: Track) {
+        val durationSeconds = track.durationSeconds ?: 0
+        val hookTargetMs = when {
+            durationSeconds > 75 -> (durationSeconds * 0.33 * 1000).toLong()
+            durationSeconds > 30 -> (durationSeconds * 0.25 * 1000).toLong()
+            else -> 0L
+        }
+        seekTo(hookTargetMs)
+    }
+
+    // Component 5: Mood & Genre Feed Selection
+    fun selectMood(mood: String) {
+        _activeMood.value = mood
+        loadMoodTracks(mood)
+    }
+
+    fun loadMoodTracks(mood: String) {
+        _activeMood.value = mood
+        _isMoodLoading.value = true
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                val cleanMood = mood.replace(Regex("""[^a-zA-Z]"""), "").trim()
+                homeRepository.getMoodData(cleanMood.ifBlank { "Chill" }).collect { res ->
+                    if (res is Resource.Success && res.data != null) {
+                        val tracks = res.data!!.items
+                            .flatMap { it.contents }
+                            .map { it.toTrack() }
+                            .filter { it.videoId.isNotBlank() }
+                        _moodTracks.value = tracks
+                    }
+                }
+            } catch (e: Exception) {
+                e.printStackTrace()
+            } finally {
+                _isMoodLoading.value = false
+            }
         }
     }
 
@@ -499,9 +813,31 @@ class SkimViewModel(
         }
     }
 
+    fun skipToNext() {
+        val next = _currentIndex.value + 1
+        if (next < _tracks.value.size) {
+            playTrackAt(next)
+        }
+    }
+
+    fun skipToPrevious() {
+        val prev = _currentIndex.value - 1
+        if (prev >= 0) {
+            playTrackAt(prev)
+        }
+    }
+
     fun seekTo(positionMs: Long) {
         _currentPositionMs.value = positionMs
         mediaPlayerHandler.player.seekTo(positionMs)
+    }
+
+    fun setSleepTimer(minutes: Int) {
+        if (minutes > 0) {
+            mediaPlayerHandler.sleepStart(minutes)
+        } else {
+            mediaPlayerHandler.sleepStop()
+        }
     }
 
     // Bug 5: Liked songs immediate reactive update + Room persistence
@@ -561,6 +897,23 @@ class SkimViewModel(
         resultType = null
     )
 
+    private fun com.maxrave.domain.data.model.mood.moodmoments.Content.toTrack(): Track = Track(
+        album = null,
+        artists = listOf(com.maxrave.domain.data.model.searchResult.songs.Artist(name = this.subtitle, id = null)),
+        duration = null,
+        durationSeconds = 0,
+        isAvailable = true,
+        isExplicit = false,
+        likeStatus = null,
+        thumbnails = this.thumbnails,
+        title = this.title,
+        videoId = this.videoId ?: "",
+        videoType = null,
+        category = null,
+        feedbackTokens = null,
+        resultType = null
+    )
+
     private fun createFallbackTrack(state: NowPlayingTrackState): Track = Track(
         album = null,
         artists = null,
@@ -577,4 +930,120 @@ class SkimViewModel(
         feedbackTokens = null,
         resultType = null
     )
+
+    private fun observeSponsorBlock() {
+        viewModelScope.launch(Dispatchers.IO) {
+            dataStoreManager.sponsorBlockEnabled.collect { enabled ->
+                _sponsorBlockEnabled.value = enabled == DataStoreManager.TRUE
+            }
+        }
+        mediaPlayerHandler.showToast = { type ->
+            if (type is ToastType.SponsorBlockSkip) {
+                _sponsorBlockToast.value = "⚡ Skipped ${type.category}"
+            }
+        }
+    }
+
+    private fun fetchDislikeInfo(videoId: String) {
+        viewModelScope.launch(Dispatchers.IO) {
+            _dislikeCount.value = null
+            _isDisliked.value = false
+            try {
+                songRepository.getSongInfo(videoId).collectLatest { songInfo ->
+                    _dislikeCount.value = songInfo?.dislike
+                }
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+        }
+    }
+
+    fun toggleDislike(track: Track) {
+        val willBeDisliked = !_isDisliked.value
+        _isDisliked.value = willBeDisliked
+        val current = _dislikeCount.value ?: 0
+        _dislikeCount.value = if (willBeDisliked) current + 1 else (current - 1).coerceAtLeast(0)
+        viewModelScope.launch(Dispatchers.IO) {
+            if (willBeDisliked) {
+                songRepository.addToYouTubeDisliked(track.videoId).collectLatest {}
+            }
+        }
+    }
+
+    fun adjustLyricsOffset(deltaMs: Long) {
+        _lyricsOffsetMs.value += deltaMs
+    }
+
+    fun resetLyricsOffset() {
+        _lyricsOffsetMs.value = 0L
+    }
+
+    fun dismissSponsorBlockToast() {
+        _sponsorBlockToast.value = null
+    }
+
+    fun toggleSponsorBlock() {
+        viewModelScope.launch(Dispatchers.IO) {
+            val newVal = !_sponsorBlockEnabled.value
+            _sponsorBlockEnabled.value = newVal
+            dataStoreManager.setSponsorBlockEnabled(newVal)
+        }
+    }
+
+    private fun updateLastFmNowPlaying(videoId: String) {
+        lastScrobbledVideoId = null
+        trackStartEpochSeconds = System.currentTimeMillis() / 1000
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                val sessionKey = dataStoreManager.lastfmSessionKey.firstOrNull() ?: ""
+                val scrobbleEnabled = dataStoreManager.lastfmScrobbleEnabled.firstOrNull() == DataStoreManager.TRUE
+                if (sessionKey.isNotBlank() && scrobbleEnabled) {
+                    val track = _tracks.value.find { it.videoId == videoId }
+                    if (track != null) {
+                        org.simpmusic.lastfm.updateNowPlaying(
+                            sessionKey = sessionKey,
+                            track = org.simpmusic.lastfm.LastfmTrack(
+                                artist = track.artists?.firstOrNull()?.name ?: "",
+                                track = track.title,
+                                durationSeconds = track.durationSeconds
+                            )
+                        )
+                    }
+                }
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+        }
+    }
+
+    private fun checkLastFmScrobble(positionMs: Long, totalMs: Long) {
+        val currentVideoId = nowPlaying.value.track?.videoId ?: nowPlaying.value.mediaItem.mediaId
+        if (currentVideoId.isBlank() || currentVideoId == lastScrobbledVideoId) return
+        val thresholdMs = minOf(totalMs / 2, 240_000L).coerceAtLeast(30_000L)
+        if (positionMs >= thresholdMs) {
+            lastScrobbledVideoId = currentVideoId
+            viewModelScope.launch(Dispatchers.IO) {
+                try {
+                    val sessionKey = dataStoreManager.lastfmSessionKey.firstOrNull() ?: ""
+                    val scrobbleEnabled = dataStoreManager.lastfmScrobbleEnabled.firstOrNull() == DataStoreManager.TRUE
+                    if (sessionKey.isNotBlank() && scrobbleEnabled) {
+                        val track = _tracks.value.find { it.videoId == currentVideoId }
+                        if (track != null) {
+                            org.simpmusic.lastfm.scrobble(
+                                sessionKey = sessionKey,
+                                track = org.simpmusic.lastfm.LastfmTrack(
+                                    artist = track.artists?.firstOrNull()?.name ?: "",
+                                    track = track.title,
+                                    durationSeconds = track.durationSeconds
+                                ),
+                                startedAtEpochSeconds = trackStartEpochSeconds
+                            )
+                        }
+                    }
+                } catch (e: Exception) {
+                    e.printStackTrace()
+                }
+            }
+        }
+    }
 }

@@ -7,7 +7,10 @@ import android.app.PendingIntent
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
+import android.app.NotificationChannel
+import android.app.NotificationManager
 import android.os.Binder
+import android.os.Build
 import android.os.IBinder
 import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
@@ -75,6 +78,19 @@ internal class SimpleMediaService :
     override fun onCreate() {
         super.onCreate()
         Logger.w("Service", "Simple Media Service Created")
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as? NotificationManager
+            val channel = NotificationChannel(
+                MEDIA_NOTIFICATION.NOTIFICATION_CHANNEL_ID,
+                getString(R.string.notification_channel_name),
+                NotificationManager.IMPORTANCE_LOW,
+            ).apply {
+                description = "Music playback controls"
+                setShowBadge(false)
+            }
+            notificationManager?.createNotificationChannel(channel)
+        }
 
         setMediaNotificationProvider(
             DefaultMediaNotificationProvider(

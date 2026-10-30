@@ -26,12 +26,16 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.QueueMusic
+import androidx.compose.material.icons.automirrored.filled.TrendingUp
+import androidx.compose.material.icons.filled.Album
 import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.DeleteOutline
 import androidx.compose.material.icons.filled.History
+import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.Radio
 import androidx.compose.material.icons.filled.Search
-import androidx.compose.material.icons.filled.TrendingUp
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -60,22 +64,36 @@ import com.kazatune.ui.theme.RessoAccent
 import com.kazatune.viewmodel.SearchCategory
 import com.kazatune.viewmodel.SearchViewModel
 import com.maxrave.domain.data.model.browse.album.Track
+import com.maxrave.domain.data.model.searchResult.albums.AlbumsResult
+import com.maxrave.domain.data.model.searchResult.artists.ArtistsResult
+import com.maxrave.domain.data.model.searchResult.playlists.PlaylistsResult
 import org.koin.androidx.compose.koinViewModel
 
 @Composable
 fun SearchScreen(
     searchViewModel: SearchViewModel = koinViewModel(),
     onPlayTrack: (Track) -> Unit = { searchViewModel.playTrack(it) },
+    onPlayTracks: (List<Track>, Int) -> Unit = { list, idx -> onPlayTrack(list[idx]) },
     modifier: Modifier = Modifier
 ) {
     val query by searchViewModel.query.collectAsStateWithLifecycle()
     val searchResults by searchViewModel.searchResults.collectAsStateWithLifecycle()
+    val searchAlbumsResult by searchViewModel.searchAlbumsResult.collectAsStateWithLifecycle()
+    val searchArtistsResult by searchViewModel.searchArtistsResult.collectAsStateWithLifecycle()
+    val searchPlaylistsResult by searchViewModel.searchPlaylistsResult.collectAsStateWithLifecycle()
     val searchHistory by searchViewModel.searchHistory.collectAsStateWithLifecycle()
     val suggestions by searchViewModel.suggestions.collectAsStateWithLifecycle()
     val isSearching by searchViewModel.isSearching.collectAsStateWithLifecycle()
     val selectedCategory by searchViewModel.selectedCategory.collectAsStateWithLifecycle()
 
     val focusManager = LocalFocusManager.current
+
+    val hasResults = when (selectedCategory) {
+        SearchCategory.SONGS -> searchResults.isNotEmpty()
+        SearchCategory.ALBUMS -> searchAlbumsResult.isNotEmpty()
+        SearchCategory.ARTISTS -> searchArtistsResult.isNotEmpty()
+        SearchCategory.PLAYLISTS -> searchPlaylistsResult.isNotEmpty()
+    }
 
     Column(
         modifier = modifier
@@ -100,7 +118,7 @@ fun SearchScreen(
             onValueChange = { searchViewModel.onQueryChange(it) },
             placeholder = {
                 Text(
-                    text = "Search songs, artists, albums...",
+                    text = "Search songs, artists, albums, playlists...",
                     fontFamily = DinProFamily,
                     fontSize = 14.sp,
                     color = Color(0x66FFFFFF)
@@ -197,7 +215,7 @@ fun SearchScreen(
                         )
                         Spacer(modifier = Modifier.height(16.dp))
                         Text(
-                            text = "Searching Kazatune...",
+                            text = "Searching Skim Music...",
                             fontFamily = DinProFamily,
                             fontSize = 14.sp,
                             color = Color(0x88FFFFFF)
@@ -206,7 +224,7 @@ fun SearchScreen(
                 }
 
                 // If user is typing query and suggestions are available
-                suggestions.isNotEmpty() && searchResults.isEmpty() -> {
+                suggestions.isNotEmpty() && !hasResults -> {
                     LazyColumn(
                         modifier = Modifier.fillMaxSize(),
                         contentPadding = PaddingValues(start = 20.dp, end = 20.dp, top = 8.dp, bottom = 120.dp)
@@ -223,7 +241,7 @@ fun SearchScreen(
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 Icon(
-                                    imageVector = Icons.Default.TrendingUp,
+                                    imageVector = Icons.AutoMirrored.Filled.TrendingUp,
                                     contentDescription = null,
                                     tint = Color(0x66FFFFFF),
                                     modifier = Modifier.size(20.dp)
@@ -241,17 +259,63 @@ fun SearchScreen(
                 }
 
                 // Search Results
-                searchResults.isNotEmpty() -> {
+                hasResults -> {
                     LazyColumn(
                         modifier = Modifier.fillMaxSize(),
                         contentPadding = PaddingValues(start = 20.dp, end = 20.dp, top = 8.dp, bottom = 120.dp),
                         verticalArrangement = Arrangement.spacedBy(10.dp)
                     ) {
-                        items(searchResults) { track ->
-                            SearchResultItem(
-                                track = track,
-                                onPlay = { onPlayTrack(track) }
-                            )
+                        when (selectedCategory) {
+                            SearchCategory.SONGS -> {
+                                items(searchResults) { track ->
+                                    SearchResultItem(
+                                        track = track,
+                                        onPlay = { onPlayTrack(track) }
+                                    )
+                                }
+                            }
+                            SearchCategory.ALBUMS -> {
+                                items(searchAlbumsResult) { album ->
+                                    AlbumSearchResultItem(
+                                        album = album,
+                                        onPlay = {
+                                            searchViewModel.playAlbum(album) { tracks ->
+                                                if (tracks.isNotEmpty()) {
+                                                    onPlayTracks(tracks, 0)
+                                                }
+                                            }
+                                        }
+                                    )
+                                }
+                            }
+                            SearchCategory.ARTISTS -> {
+                                items(searchArtistsResult) { artist ->
+                                    ArtistSearchResultItem(
+                                        artist = artist,
+                                        onPlay = {
+                                            searchViewModel.playArtist(artist) { tracks ->
+                                                if (tracks.isNotEmpty()) {
+                                                    onPlayTracks(tracks, 0)
+                                                }
+                                            }
+                                        }
+                                    )
+                                }
+                            }
+                            SearchCategory.PLAYLISTS -> {
+                                items(searchPlaylistsResult) { playlist ->
+                                    PlaylistSearchResultItem(
+                                        playlist = playlist,
+                                        onPlay = {
+                                            searchViewModel.playPlaylist(playlist) { tracks ->
+                                                if (tracks.isNotEmpty()) {
+                                                    onPlayTracks(tracks, 0)
+                                                }
+                                            }
+                                        }
+                                    )
+                                }
+                            }
                         }
                     }
                 }
@@ -341,7 +405,7 @@ fun SearchScreen(
                             )
                             Spacer(modifier = Modifier.height(16.dp))
                             Text(
-                                text = "Search Kazatune",
+                                text = "Search Skim Music",
                                 fontFamily = DinProFamily,
                                 fontSize = 18.sp,
                                 fontWeight = FontWeight.Bold,
@@ -369,7 +433,7 @@ fun SearchScreen(
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
                         Text(
-                            text = "No tracks found",
+                            text = "No results found for ${selectedCategory.name.lowercase()}",
                             fontFamily = DinProFamily,
                             fontSize = 17.sp,
                             fontWeight = FontWeight.Bold,
@@ -377,7 +441,7 @@ fun SearchScreen(
                         )
                         Spacer(modifier = Modifier.height(6.dp))
                         Text(
-                            text = "Try searching for a different track or artist name",
+                            text = "Try searching for a different keyword or category",
                             fontFamily = DinProFamily,
                             fontSize = 13.sp,
                             color = Color(0x66FFFFFF)
@@ -466,6 +530,279 @@ fun SearchResultItem(
                 Icon(
                     imageVector = Icons.Default.PlayArrow,
                     contentDescription = "Play",
+                    tint = Color.White,
+                    modifier = Modifier.size(20.dp)
+                )
+            }
+        }
+    }
+}
+
+@Composable
+fun AlbumSearchResultItem(
+    album: AlbumsResult,
+    onPlay: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val artworkUrl = album.thumbnails.lastOrNull()?.url
+    val artistName = album.artists.joinToString(", ") { it.name ?: "" }
+
+    Surface(
+        shape = RoundedCornerShape(12.dp),
+        color = Color(0xFF181720),
+        modifier = modifier
+            .fillMaxWidth()
+            .clickable { onPlay() }
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(10.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(54.dp)
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(Color(0xFF262530)),
+                contentAlignment = Alignment.Center
+            ) {
+                if (!artworkUrl.isNullOrBlank()) {
+                    AsyncImage(
+                        model = artworkUrl,
+                        contentDescription = album.title,
+                        contentScale = ContentScale.Crop,
+                        modifier = Modifier.size(54.dp)
+                    )
+                } else {
+                    Icon(
+                        imageVector = Icons.Default.Album,
+                        contentDescription = null,
+                        tint = RessoAccent,
+                        modifier = Modifier.size(26.dp)
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.width(12.dp))
+
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = album.title,
+                    fontFamily = DinProFamily,
+                    fontSize = 15.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = Color.White,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+                Spacer(modifier = Modifier.height(3.dp))
+                Text(
+                    text = buildString {
+                        if (artistName.isNotBlank()) append(artistName)
+                        if (album.year.isNotBlank()) {
+                            if (isNotEmpty()) append(" • ")
+                            append(album.year)
+                        }
+                    }.ifBlank { "Album" },
+                    fontFamily = DinProFamily,
+                    fontSize = 12.sp,
+                    color = Color(0x99FFFFFF),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
+
+            IconButton(
+                onClick = onPlay,
+                modifier = Modifier
+                    .size(36.dp)
+                    .clip(CircleShape)
+                    .background(RessoAccent)
+            ) {
+                Icon(
+                    imageVector = Icons.Default.PlayArrow,
+                    contentDescription = "Play Album",
+                    tint = Color.White,
+                    modifier = Modifier.size(20.dp)
+                )
+            }
+        }
+    }
+}
+
+@Composable
+fun ArtistSearchResultItem(
+    artist: ArtistsResult,
+    onPlay: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val avatarUrl = artist.thumbnails.lastOrNull()?.url
+
+    Surface(
+        shape = RoundedCornerShape(12.dp),
+        color = Color(0xFF181720),
+        modifier = modifier
+            .fillMaxWidth()
+            .clickable { onPlay() }
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(10.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(54.dp)
+                    .clip(CircleShape)
+                    .background(Color(0xFF262530)),
+                contentAlignment = Alignment.Center
+            ) {
+                if (!avatarUrl.isNullOrBlank()) {
+                    AsyncImage(
+                        model = avatarUrl,
+                        contentDescription = artist.artist,
+                        contentScale = ContentScale.Crop,
+                        modifier = Modifier
+                            .size(54.dp)
+                            .clip(CircleShape)
+                    )
+                } else {
+                    Icon(
+                        imageVector = Icons.Default.Person,
+                        contentDescription = null,
+                        tint = RessoAccent,
+                        modifier = Modifier.size(26.dp)
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.width(12.dp))
+
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = artist.artist,
+                    fontFamily = DinProFamily,
+                    fontSize = 15.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = Color.White,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+                Spacer(modifier = Modifier.height(3.dp))
+                Text(
+                    text = "Artist",
+                    fontFamily = DinProFamily,
+                    fontSize = 12.sp,
+                    color = Color(0x99FFFFFF),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
+
+            IconButton(
+                onClick = onPlay,
+                modifier = Modifier
+                    .size(36.dp)
+                    .clip(CircleShape)
+                    .background(RessoAccent)
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Radio,
+                    contentDescription = "Start Artist Radio",
+                    tint = Color.White,
+                    modifier = Modifier.size(20.dp)
+                )
+            }
+        }
+    }
+}
+
+@Composable
+fun PlaylistSearchResultItem(
+    playlist: PlaylistsResult,
+    onPlay: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val artworkUrl = playlist.thumbnails.lastOrNull()?.url
+
+    Surface(
+        shape = RoundedCornerShape(12.dp),
+        color = Color(0xFF181720),
+        modifier = modifier
+            .fillMaxWidth()
+            .clickable { onPlay() }
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(10.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(54.dp)
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(Color(0xFF262530)),
+                contentAlignment = Alignment.Center
+            ) {
+                if (!artworkUrl.isNullOrBlank()) {
+                    AsyncImage(
+                        model = artworkUrl,
+                        contentDescription = playlist.title,
+                        contentScale = ContentScale.Crop,
+                        modifier = Modifier.size(54.dp)
+                    )
+                } else {
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Filled.QueueMusic,
+                        contentDescription = null,
+                        tint = RessoAccent,
+                        modifier = Modifier.size(26.dp)
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.width(12.dp))
+
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = playlist.title,
+                    fontFamily = DinProFamily,
+                    fontSize = 15.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = Color.White,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+                Spacer(modifier = Modifier.height(3.dp))
+                Text(
+                    text = buildString {
+                        if (playlist.author.isNotBlank()) append(playlist.author)
+                        if (playlist.itemCount.isNotBlank()) {
+                            if (isNotEmpty()) append(" • ")
+                            append("${playlist.itemCount} tracks")
+                        }
+                    }.ifBlank { "Playlist" },
+                    fontFamily = DinProFamily,
+                    fontSize = 12.sp,
+                    color = Color(0x99FFFFFF),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
+
+            IconButton(
+                onClick = onPlay,
+                modifier = Modifier
+                    .size(36.dp)
+                    .clip(CircleShape)
+                    .background(RessoAccent)
+            ) {
+                Icon(
+                    imageVector = Icons.Default.PlayArrow,
+                    contentDescription = "Play Playlist",
                     tint = Color.White,
                     modifier = Modifier.size(20.dp)
                 )

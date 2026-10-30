@@ -86,4 +86,10 @@ dependencies {
 
     // Coroutines
     implementation(libs.coroutines.android)
+
+    // Glance Home Screen Widgets
+    implementation(libs.work.runtime.ktx)
+    implementation(libs.glance)
+    implementation(libs.glance.appwidget)
+    implementation(libs.glance.material3)
 }

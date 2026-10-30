@@ -37,7 +37,20 @@ fun SyncedLyricsOverlay(
     modifier: Modifier = Modifier
 ) {
     val lines = lyrics?.lines ?: emptyList()
-    if (lines.isEmpty()) return
+    if (lines.isEmpty()) {
+        Box(
+            modifier = modifier.fillMaxWidth(),
+            contentAlignment = Alignment.Center
+        ) {
+            Text(
+                text = "No synchronized lyrics found",
+                fontFamily = DinProFamily,
+                fontSize = 15.sp,
+                color = Color(0x77FFFFFF)
+            )
+        }
+        return
+    }
 
     // Find the current active line based on playback timestamp
     val activeIndex by remember(lines, currentPositionMs) {
@@ -61,9 +74,7 @@ fun SyncedLyricsOverlay(
     }
 
     Box(
-        modifier = modifier
-            .fillMaxWidth()
-            .heightIn(max = 240.dp),
+        modifier = modifier.fillMaxWidth(),
         contentAlignment = Alignment.Center
     ) {
         LazyColumn(

@@ -21,18 +21,22 @@ import com.maxrave.kotlinytmusicscraper.YouTube
 import com.maxrave.kotlinytmusicscraper.models.MediaType
 import com.maxrave.kotlinytmusicscraper.models.response.PlayerResponse
 import com.maxrave.logger.Logger
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOn
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 internal class StreamRepositoryImpl(
     private val localDataSource: LocalDataSource,
     private val youTube: YouTube,
 ) : StreamRepository {
+    private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
     override suspend fun insertNewFormat(newFormat: NewFormatEntity) =
         withContext(Dispatchers.IO) {
             localDataSource.insertNewFormat(newFormat)
@@ -218,17 +222,22 @@ internal class StreamRepositoryImpl(
                                 .replace(Regex("([()])"), "")
                                 .replace(".", " ")
                                 .replace("  ", " ")
-                        Logger.d("Stream", "Search Tidal metadata for: $q")
-                        youTube
-                            .searchTidalMetadata(q, durationSecond)
-                            .onSuccess { metadata ->
-                                Logger.d("Stream", "Tidal metadata: $metadata")
-                                tidalBpm = metadata.bpm
-                                tidalMusicKey = metadata.musicKey
-                                tidalKeyScale = metadata.keyScale
-                            }.onFailure {
-                                Logger.e("Stream", "Tidal metadata error: ${it.message}", it)
-                            }
+                        // Fetch Tidal AutoMix metadata asynchronously in background so audio emission starts immediately
+                        scope.launch {
+                            youTube
+                                .searchTidalMetadata(q, durationSecond)
+                                .onSuccess { metadata ->
+                                    localDataSource.getNewFormat(videoId)?.let { currentFormat ->
+                                        localDataSource.updateNewFormat(
+                                            currentFormat.copy(
+                                                bpm = metadata.bpm,
+                                                musicKey = metadata.musicKey,
+                                                keyScale = metadata.keyScale,
+                                            ),
+                                        )
+                                    }
+                                }
+                        }
                     }
                     insertNewFormat(
                         NewFormatEntity(

@@ -2,12 +2,14 @@ package com.kazatune.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.maxrave.domain.data.entities.DownloadState
 import com.maxrave.domain.data.entities.LocalPlaylistEntity
 import com.maxrave.domain.data.entities.SongEntity
 import com.maxrave.domain.data.model.browse.album.Track
 import com.maxrave.domain.data.model.searchResult.playlists.PlaylistsResult
 import com.maxrave.domain.data.model.streams.YouTubeWatchEndpoint
 import com.maxrave.domain.extension.toGenericMediaItem
+import com.maxrave.domain.mediaservice.handler.DownloadHandler
 import com.maxrave.domain.mediaservice.handler.MediaPlayerHandler
 import com.maxrave.domain.repository.LocalPlaylistRepository
 import com.maxrave.domain.repository.PlaylistRepository
@@ -28,7 +30,8 @@ class LibraryViewModel(
     private val songRepository: SongRepository,
     private val localPlaylistRepository: LocalPlaylistRepository,
     private val playlistRepository: PlaylistRepository,
-    private val mediaPlayerHandler: MediaPlayerHandler
+    private val mediaPlayerHandler: MediaPlayerHandler,
+    private val downloadHandler: DownloadHandler
 ) : ViewModel() {
 
     private val _selectedTab = MutableStateFlow(LibraryTab.ALL)
@@ -49,6 +52,10 @@ class LibraryViewModel(
     // For Bug 11: When user clicks on the Liked Songs banner, opens all liked songs inside that banner view
     private val _isLikedSongsBannerOpen = MutableStateFlow(false)
     val isLikedSongsBannerOpen: StateFlow<Boolean> = _isLikedSongsBannerOpen.asStateFlow()
+
+    // Dedicated Downloads Section Banner
+    private val _isDownloadedSongsBannerOpen = MutableStateFlow(false)
+    val isDownloadedSongsBannerOpen: StateFlow<Boolean> = _isDownloadedSongsBannerOpen.asStateFlow()
 
     init {
         observeData()
@@ -85,19 +92,54 @@ class LibraryViewModel(
         _selectedTab.value = tab
         if (tab == LibraryTab.LIKED) {
             _isLikedSongsBannerOpen.value = true
+            _isDownloadedSongsBannerOpen.value = false
+        } else if (tab == LibraryTab.DOWNLOADS) {
+            _isDownloadedSongsBannerOpen.value = true
+            _isLikedSongsBannerOpen.value = false
         } else {
             _isLikedSongsBannerOpen.value = false
+            _isDownloadedSongsBannerOpen.value = false
         }
     }
 
     fun openLikedSongsBanner() {
         _isLikedSongsBannerOpen.value = true
+        _isDownloadedSongsBannerOpen.value = false
     }
 
     fun closeLikedSongsBanner() {
         _isLikedSongsBannerOpen.value = false
         if (_selectedTab.value == LibraryTab.LIKED) {
             _selectedTab.value = LibraryTab.ALL
+        }
+    }
+
+    fun openDownloadedSongsBanner() {
+        _isDownloadedSongsBannerOpen.value = true
+        _isLikedSongsBannerOpen.value = false
+    }
+
+    fun closeDownloadedSongsBanner() {
+        _isDownloadedSongsBannerOpen.value = false
+        if (_selectedTab.value == LibraryTab.DOWNLOADS) {
+            _selectedTab.value = LibraryTab.ALL
+        }
+    }
+
+    fun deleteDownload(videoId: String) {
+        viewModelScope.launch(Dispatchers.IO) {
+            downloadHandler.removeDownload(videoId)
+            songRepository.updateDownloadState(videoId, DownloadState.STATE_NOT_DOWNLOADED)
+        }
+    }
+
+    fun deleteAllDownloads() {
+        viewModelScope.launch(Dispatchers.IO) {
+            val list = _downloadedSongs.value
+            for (song in list) {
+                downloadHandler.removeDownload(song.videoId)
+                songRepository.updateDownloadState(song.videoId, DownloadState.STATE_NOT_DOWNLOADED)
+            }
         }
     }
 
@@ -128,6 +170,22 @@ class LibraryViewModel(
                     if (res is Resource.Success && !res.data?.first.isNullOrEmpty()) {
                         val tracks = res.data!!.first
                         onTracksLoaded(tracks)
+                    }
+                }
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+        }
+    }
+
+    fun playLocalPlaylist(playlist: LocalPlaylistEntity, onTracksLoaded: (List<Track>) -> Unit) {
+        val trackIds = playlist.tracks ?: return
+        if (trackIds.isEmpty()) return
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                songRepository.getSongsByListVideoId(trackIds).collect { songs ->
+                    if (songs.isNotEmpty()) {
+                        onTracksLoaded(songs.map { it.toTrack() })
                     }
                 }
             } catch (e: Exception) {

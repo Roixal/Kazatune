@@ -1,9 +1,19 @@
 package com.kazatune
 
+import android.Manifest
+import android.content.ComponentName
+import android.content.ServiceConnection
+import android.content.pm.PackageManager
+import android.os.Build
 import android.os.Bundle
+import android.os.IBinder
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.core.content.ContextCompat
+import com.maxrave.media3.di.setServiceActivitySession
+import com.maxrave.media3.di.startService
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -30,15 +40,59 @@ import org.koin.androidx.compose.koinViewModel
 
 class MainActivity : ComponentActivity() {
 
+    private var mBound = false
+    private val serviceConnection = object : ServiceConnection {
+        override fun onServiceConnected(name: ComponentName?, service: IBinder?) {
+            setServiceActivitySession(this@MainActivity, MainActivity::class.java, service)
+            mBound = true
+        }
+
+        override fun onServiceDisconnected(name: ComponentName?) {
+            mBound = false
+        }
+    }
+
+    private val requestNotificationPermission =
+        registerForActivityResult(ActivityResultContracts.RequestPermission()) { _ ->
+            // Notification permission handled
+        }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            if (ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
+                requestNotificationPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
+            }
+        }
 
         setContent {
             KazatuneTheme {
                 MainRootScreen()
             }
         }
+    }
+
+    override fun onStart() {
+        super.onStart()
+        try {
+            startService(this, serviceConnection)
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+    }
+
+    override fun onDestroy() {
+        if (mBound) {
+            try {
+                unbindService(serviceConnection)
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+            mBound = false
+        }
+        super.onDestroy()
     }
 }
 
@@ -63,11 +117,19 @@ fun MainRootScreen(
                     onPlayTrack = { track ->
                         skimViewModel.playTrackAndStartRadio(track)
                         currentTab = MainTab.SKIM
+                    },
+                    onPlayTracks = { tracks, initialIndex ->
+                        skimViewModel.setTracksAndPlay(tracks, initialIndex)
+                        currentTab = MainTab.SKIM
                     }
                 )
                 MainTab.LIBRARY -> LibraryScreen(
                     onPlayTrack = { track ->
                         skimViewModel.playTrackAndStartRadio(track)
+                        currentTab = MainTab.SKIM
+                    },
+                    onPlayTracks = { tracks, initialIndex ->
+                        skimViewModel.setTracksAndPlay(tracks, initialIndex)
                         currentTab = MainTab.SKIM
                     }
                 )

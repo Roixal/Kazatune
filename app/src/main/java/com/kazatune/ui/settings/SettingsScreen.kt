@@ -28,6 +28,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.VolumeUp
 import androidx.compose.material.icons.filled.AccountCircle
 import androidx.compose.material.icons.filled.AvTimer
+import androidx.compose.material.icons.filled.Bolt
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.CleaningServices
 import androidx.compose.material.icons.filled.Close
@@ -36,6 +37,7 @@ import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Key
 import androidx.compose.material.icons.filled.Login
 import androidx.compose.material.icons.filled.Logout
+import androidx.compose.material.icons.filled.Radio
 import androidx.compose.material.icons.filled.Storage
 import androidx.compose.material.icons.filled.Wallpaper
 import androidx.compose.material3.AlertDialog
@@ -85,11 +87,17 @@ fun SettingsScreen(
     val cacheSizeMb by settingsViewModel.cacheSizeMb.collectAsStateWithLifecycle()
     val sleepTimerState by settingsViewModel.sleepTimerState.collectAsStateWithLifecycle()
     val isYtMusicLoggedIn by settingsViewModel.isYtMusicLoggedIn.collectAsStateWithLifecycle()
+    val sponsorBlockEnabled by settingsViewModel.sponsorBlockEnabled.collectAsStateWithLifecycle()
+    val lastfmUsername by settingsViewModel.lastfmUsername.collectAsStateWithLifecycle()
+    val lastfmScrobbleEnabled by settingsViewModel.lastfmScrobbleEnabled.collectAsStateWithLifecycle()
 
     var showQualityDialog by remember { mutableStateOf(false) }
     var showWebLoginDialog by remember { mutableStateOf(false) }
     var showCookieImportDialog by remember { mutableStateOf(false) }
+    var showLastfmDialog by remember { mutableStateOf(false) }
     var cookieInputText by remember { mutableStateOf("") }
+    var lastfmUsernameInput by remember { mutableStateOf("") }
+    var lastfmSessionKeyInput by remember { mutableStateOf("") }
 
     Column(
         modifier = modifier
@@ -285,6 +293,16 @@ fun SettingsScreen(
                 )
             }
 
+            item {
+                SettingsSwitchCard(
+                    icon = Icons.Default.Bolt,
+                    title = "SponsorBlock & Segment Skipping",
+                    subtitle = "Skip sponsor segments, intros, and non-music interludes",
+                    checked = sponsorBlockEnabled,
+                    onCheckedChange = { settingsViewModel.toggleSponsorBlock(it) }
+                )
+            }
+
             // Section: Storage & Cache
             item {
                 Spacer(modifier = Modifier.height(4.dp))
@@ -457,7 +475,74 @@ fun SettingsScreen(
                 }
             }
 
-            // Section: About Kazatune
+            // Section: Last.fm Scrobbling
+            item {
+                Spacer(modifier = Modifier.height(4.dp))
+                SettingsSectionHeader("Last.fm Scrobbling")
+            }
+
+            item {
+                SettingsSwitchCard(
+                    icon = Icons.Default.Radio,
+                    title = "Background Scrobbling",
+                    subtitle = if (lastfmUsername.isNotBlank()) "Scrobbling active for $lastfmUsername" else "Enable scrobbling to your Last.fm profile",
+                    checked = lastfmScrobbleEnabled && lastfmUsername.isNotBlank(),
+                    onCheckedChange = { settingsViewModel.toggleLastfmScrobble(it) }
+                )
+            }
+
+            item {
+                Surface(
+                    shape = RoundedCornerShape(12.dp),
+                    color = Color(0xFF181720),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { showLastfmDialog = true }
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(40.dp)
+                                .clip(RoundedCornerShape(8.dp))
+                                .background(Color(0xFF252430)),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = if (lastfmUsername.isNotBlank()) Icons.Default.CheckCircle else Icons.Default.AccountCircle,
+                                contentDescription = null,
+                                tint = if (lastfmUsername.isNotBlank()) Color(0xFF4CAF50) else RessoAccent,
+                                modifier = Modifier.size(24.dp)
+                            )
+                        }
+
+                        Spacer(modifier = Modifier.width(14.dp))
+
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = if (lastfmUsername.isNotBlank()) "Last.fm: $lastfmUsername" else "Connect Last.fm Account",
+                                fontFamily = DinProFamily,
+                                fontSize = 15.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                color = Color.White
+                            )
+                            Spacer(modifier = Modifier.height(2.dp))
+                            Text(
+                                text = if (lastfmUsername.isNotBlank()) "Tap to manage account or disconnect" else "Tap to connect your Last.fm username",
+                                fontFamily = DinProFamily,
+                                fontSize = 13.sp,
+                                color = Color(0x99FFFFFF)
+                            )
+                        }
+                    }
+                }
+            }
+
+            // Section: About Skim Music
             item {
                 Spacer(modifier = Modifier.height(4.dp))
                 SettingsSectionHeader("About")
@@ -488,7 +573,7 @@ fun SettingsScreen(
                             Spacer(modifier = Modifier.width(14.dp))
                             Column {
                                 Text(
-                                    text = "Kazatune",
+                                    text = "Skim Music",
                                     fontFamily = DinProFamily,
                                     fontSize = 16.sp,
                                     fontWeight = FontWeight.Bold,
@@ -721,6 +806,90 @@ fun SettingsScreen(
                         color = RessoAccent,
                         fontWeight = FontWeight.Bold
                     )
+                }
+            }
+        )
+    }
+
+    // Last.fm Connection Dialog
+    if (showLastfmDialog) {
+        AlertDialog(
+            onDismissRequest = { showLastfmDialog = false },
+            containerColor = Color(0xFF1E1D26),
+            shape = RoundedCornerShape(20.dp),
+            title = {
+                Text(
+                    text = if (lastfmUsername.isNotBlank()) "Last.fm Account" else "Connect Last.fm",
+                    fontFamily = DinProFamily,
+                    color = Color.White,
+                    fontWeight = FontWeight.Bold
+                )
+            },
+            text = {
+                Column {
+                    if (lastfmUsername.isNotBlank()) {
+                        Text(
+                            text = "Currently connected as: $lastfmUsername",
+                            fontFamily = DinProFamily,
+                            color = Color(0xCCFFFFFF),
+                            fontSize = 14.sp
+                        )
+                        Spacer(modifier = Modifier.height(16.dp))
+                        Button(
+                            onClick = {
+                                settingsViewModel.logoutLastfm()
+                                showLastfmDialog = false
+                            },
+                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFFF3366)),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text("Disconnect Account", fontFamily = DinProFamily, fontWeight = FontWeight.Bold)
+                        }
+                    } else {
+                        Text(
+                            text = "Enter your Last.fm username and optional session key to enable scrobbling.",
+                            fontFamily = DinProFamily,
+                            color = Color(0xAAFFFFFF),
+                            fontSize = 13.sp
+                        )
+                        Spacer(modifier = Modifier.height(12.dp))
+                        OutlinedTextField(
+                            value = lastfmUsernameInput,
+                            onValueChange = { lastfmUsernameInput = it },
+                            label = { Text("Last.fm Username", color = Color(0x88FFFFFF)) },
+                            singleLine = true,
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                        OutlinedTextField(
+                            value = lastfmSessionKeyInput,
+                            onValueChange = { lastfmSessionKeyInput = it },
+                            label = { Text("Session Key (Optional)", color = Color(0x88FFFFFF)) },
+                            singleLine = true,
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                    }
+                }
+            },
+            confirmButton = {
+                if (lastfmUsername.isBlank()) {
+                    TextButton(
+                        onClick = {
+                            if (lastfmUsernameInput.isNotBlank()) {
+                                val sk = lastfmSessionKeyInput.ifBlank { "skim_session_${lastfmUsernameInput.trim()}" }
+                                settingsViewModel.saveLastfmSession(sk, lastfmUsernameInput.trim())
+                                settingsViewModel.toggleLastfmScrobble(true)
+                            }
+                            showLastfmDialog = false
+                        }
+                    ) {
+                        Text("Connect", fontFamily = DinProFamily, color = RessoAccent, fontWeight = FontWeight.Bold)
+                    }
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showLastfmDialog = false }) {
+                    Text("Close", fontFamily = DinProFamily, color = Color(0x88FFFFFF))
                 }
             }
         )

@@ -33,6 +33,15 @@ class SettingsViewModel(
     private val _isYtMusicLoggedIn = MutableStateFlow(false)
     val isYtMusicLoggedIn: StateFlow<Boolean> = _isYtMusicLoggedIn.asStateFlow()
 
+    private val _sponsorBlockEnabled = MutableStateFlow(true)
+    val sponsorBlockEnabled: StateFlow<Boolean> = _sponsorBlockEnabled.asStateFlow()
+
+    private val _lastfmUsername = MutableStateFlow("")
+    val lastfmUsername: StateFlow<String> = _lastfmUsername.asStateFlow()
+
+    private val _lastfmScrobbleEnabled = MutableStateFlow(true)
+    val lastfmScrobbleEnabled: StateFlow<Boolean> = _lastfmScrobbleEnabled.asStateFlow()
+
     val sleepTimerState = mediaPlayerHandler.sleepTimerState
 
     init {
@@ -59,6 +68,21 @@ class SettingsViewModel(
         viewModelScope.launch(Dispatchers.IO) {
             dataStoreManager.loggedIn.collect { logged ->
                 _isYtMusicLoggedIn.value = logged == DataStoreManager.Values.TRUE || logged.equals("true", ignoreCase = true)
+            }
+        }
+        viewModelScope.launch(Dispatchers.IO) {
+            dataStoreManager.sponsorBlockEnabled.collect { s ->
+                _sponsorBlockEnabled.value = s == DataStoreManager.Values.TRUE || s.equals("true", ignoreCase = true)
+            }
+        }
+        viewModelScope.launch(Dispatchers.IO) {
+            dataStoreManager.lastfmUsername.collect { u ->
+                _lastfmUsername.value = u
+            }
+        }
+        viewModelScope.launch(Dispatchers.IO) {
+            dataStoreManager.lastfmScrobbleEnabled.collect { sc ->
+                _lastfmScrobbleEnabled.value = sc == DataStoreManager.Values.TRUE || sc.equals("true", ignoreCase = true)
             }
         }
     }
@@ -112,6 +136,34 @@ class SettingsViewModel(
             mediaPlayerHandler.sleepStart(minutes)
         } else {
             mediaPlayerHandler.sleepStop()
+        }
+    }
+
+    fun toggleSponsorBlock(enabled: Boolean) {
+        viewModelScope.launch(Dispatchers.IO) {
+            dataStoreManager.setSponsorBlockEnabled(enabled)
+            _sponsorBlockEnabled.value = enabled
+        }
+    }
+
+    fun toggleLastfmScrobble(enabled: Boolean) {
+        viewModelScope.launch(Dispatchers.IO) {
+            dataStoreManager.setLastfmScrobbleEnabled(enabled)
+            _lastfmScrobbleEnabled.value = enabled
+        }
+    }
+
+    fun saveLastfmSession(sessionKey: String, username: String) {
+        viewModelScope.launch(Dispatchers.IO) {
+            dataStoreManager.setLastfmSession(sessionKey.trim(), username.trim())
+            _lastfmUsername.value = username.trim()
+        }
+    }
+
+    fun logoutLastfm() {
+        viewModelScope.launch(Dispatchers.IO) {
+            dataStoreManager.setLastfmSession("", "")
+            _lastfmUsername.value = ""
         }
     }
 

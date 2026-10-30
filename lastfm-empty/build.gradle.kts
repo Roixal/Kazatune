@@ -4,6 +4,7 @@ plugins {
     alias(libs.plugins.kotlin.multiplatform)
     alias(libs.plugins.android.kotlin.multiplatform.library)
     alias(libs.plugins.android.lint)
+    alias(libs.plugins.kotlin.serialization)
 }
 
 kotlin {
@@ -32,8 +33,15 @@ kotlin {
         commonMain {
             dependencies {
                 implementation(libs.kotlin.stdlib)
-                // Logger only — no Ktor, no okio, no API key. A FOSS build carries no Last.fm code.
                 implementation(projects.common)
+                implementation(projects.ktorExt)
+                implementation(libs.ktor.client.core)
+                implementation(libs.ktor.client.content.negotiation)
+                implementation(libs.ktor.serialization.kotlinx.json)
+                implementation(libs.kotlinx.serialization.json)
+                // MD5 for api_sig. okio hashes on every target this module builds for,
+                // so no expect/actual is needed just to sign a request.
+                implementation(libs.okio)
             }
         }
     }

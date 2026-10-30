@@ -1,94 +1,210 @@
 [
     {
-        "merged": "C:\\Users\\Amit\\.gradle\\daemon\\9.8.1\\com.kazatune.app-debug-4:\\mipmap-xhdpi_ic_launcher_round.png.flat",
-        "source": "C:\\Users\\Amit\\.gradle\\daemon\\9.8.1\\com.kazatune.app-main-6:\\mipmap-xhdpi\\ic_launcher_round.png"
+        "merged": "com.kazatune.app-debug-77:/drawable_rounded_fast_rewind_24.xml.flat",
+        "source": "com.kazatune.app-main-79:/drawable/rounded_fast_rewind_24.xml"
     },
     {
-        "merged": "C:\\Users\\Amit\\.gradle\\daemon\\9.8.1\\com.kazatune.app-debug-4:\\drawable_playing_background_bg.xml.flat",
-        "source": "C:\\Users\\Amit\\.gradle\\daemon\\9.8.1\\com.kazatune.app-main-6:\\drawable\\playing_background_bg.xml"
+        "merged": "/Users/krixh.../.gradle/daemon/9.8.1/com.kazatune.app-debug-77:/mipmap-xhdpi_ic_close_black_online.png.flat",
+        "source": "/Users/krixh.../.gradle/daemon/9.8.1/com.kazatune.app-main-79:/mipmap-xhdpi/ic_close_black_online.png"
     },
     {
-        "merged": "C:\\Users\\Amit\\.gradle\\daemon\\9.8.1\\com.kazatune.app-debug-4:\\mipmap-xxhdpi_grid_camera.png.flat",
-        "source": "C:\\Users\\Amit\\.gradle\\daemon\\9.8.1\\com.kazatune.app-main-6:\\mipmap-xxhdpi\\grid_camera.png"
+        "merged": "/Users/krixh.../.gradle/daemon/9.8.1/com.kazatune.app-debug-77:/drawable_comment_bg_bottom_sheet_dialog.xml.flat",
+        "source": "/Users/krixh.../.gradle/daemon/9.8.1/com.kazatune.app-main-79:/drawable/comment_bg_bottom_sheet_dialog.xml"
     },
     {
-        "merged": "C:\\Users\\Amit\\.gradle\\daemon\\9.8.1\\com.kazatune.app-debug-4:\\mipmap-anydpi-v26_ic_launcher.xml.flat",
-        "source": "C:\\Users\\Amit\\.gradle\\daemon\\9.8.1\\com.kazatune.app-main-6:\\mipmap-anydpi-v26\\ic_launcher.xml"
+        "merged": "/Users/krixh.../.gradle/daemon/9.8.1/com.kazatune.app-debug-77:/mipmap-hdpi_ic_launcher_round.png.flat",
+        "source": "/Users/krixh.../.gradle/daemon/9.8.1/com.kazatune.app-main-79:/mipmap-hdpi/ic_launcher_round.png"
     },
     {
-        "merged": "C:\\Users\\Amit\\.gradle\\daemon\\9.8.1\\com.kazatune.app-debug-4:\\mipmap-xxhdpi_ic_back_black_online.png.flat",
-        "source": "C:\\Users\\Amit\\.gradle\\daemon\\9.8.1\\com.kazatune.app-main-6:\\mipmap-xxhdpi\\ic_back_black_online.png"
+        "merged": "/Users/krixh.../.gradle/daemon/9.8.1/com.kazatune.app-debug-77:/mipmap-xxxhdpi_ic_launcher.png.flat",
+        "source": "/Users/krixh.../.gradle/daemon/9.8.1/com.kazatune.app-main-79:/mipmap-xxxhdpi/ic_launcher.png"
     },
     {
-        "merged": "C:\\Users\\Amit\\.gradle\\daemon\\9.8.1\\com.kazatune.app-debug-4:\\mipmap-xxxhdpi_ic_launcher_round.png.flat",
-        "source": "C:\\Users\\Amit\\.gradle\\daemon\\9.8.1\\com.kazatune.app-main-6:\\mipmap-xxxhdpi\\ic_launcher_round.png"
+        "merged": "/Users/krixh.../.gradle/daemon/9.8.1/com.kazatune.app-debug-77:/drawable_widget_preview_img_turntable.xml.flat",
+        "source": "/Users/krixh.../.gradle/daemon/9.8.1/com.kazatune.app-main-79:/drawable/widget_preview_img_turntable.xml"
     },
     {
-        "merged": "C:\\Users\\Amit\\.gradle\\daemon\\9.8.1\\com.kazatune.app-debug-4:\\mipmap-mdpi_ic_launcher_round.png.flat",
-        "source": "C:\\Users\\Amit\\.gradle\\daemon\\9.8.1\\com.kazatune.app-main-6:\\mipmap-mdpi\\ic_launcher_round.png"
+        "merged": "/Users/krixh.../.gradle/daemon/9.8.1/com.kazatune.app-debug-77:/mipmap-hdpi_ic_launcher.png.flat",
+        "source": "/Users/krixh.../.gradle/daemon/9.8.1/com.kazatune.app-main-79:/mipmap-hdpi/ic_launcher.png"
     },
     {
-        "merged": "C:\\Users\\Amit\\.gradle\\daemon\\9.8.1\\com.kazatune.app-debug-4:\\mipmap-hdpi_ic_close_black_online.png.flat",
-        "source": "C:\\Users\\Amit\\.gradle\\daemon\\9.8.1\\com.kazatune.app-main-6:\\mipmap-hdpi\\ic_close_black_online.png"
+        "merged": "/Users/krixh.../.gradle/daemon/9.8.1/com.kazatune.app-debug-77:/mipmap-xxhdpi_grid_camera.png.flat",
+        "source": "/Users/krixh.../.gradle/daemon/9.8.1/com.kazatune.app-main-79:/mipmap-xxhdpi/grid_camera.png"
     },
     {
-        "merged": "C:\\Users\\Amit\\.gradle\\daemon\\9.8.1\\com.kazatune.app-debug-4:\\mipmap-xhdpi_ic_close_black_online.png.flat",
-        "source": "C:\\Users\\Amit\\.gradle\\daemon\\9.8.1\\com.kazatune.app-main-6:\\mipmap-xhdpi\\ic_close_black_online.png"
+        "merged": "/Users/krixh.../.gradle/daemon/9.8.1/com.kazatune.app-debug-77:/drawable_widget_shortcut_tile.xml.flat",
+        "source": "/Users/krixh.../.gradle/daemon/9.8.1/com.kazatune.app-main-79:/drawable/widget_shortcut_tile.xml"
     },
     {
-        "merged": "C:\\Users\\Amit\\.gradle\\daemon\\9.8.1\\com.kazatune.app-debug-4:\\mipmap-xhdpi_ic_launcher.png.flat",
-        "source": "C:\\Users\\Amit\\.gradle\\daemon\\9.8.1\\com.kazatune.app-main-6:\\mipmap-xhdpi\\ic_launcher.png"
+        "merged": "/Users/krixh.../.gradle/daemon/9.8.1/com.kazatune.app-debug-77:/drawable_widget_rank_badge.xml.flat",
+        "source": "/Users/krixh.../.gradle/daemon/9.8.1/com.kazatune.app-main-79:/drawable/widget_rank_badge.xml"
     },
     {
-        "merged": "C:\\Users\\Amit\\.gradle\\daemon\\9.8.1\\com.kazatune.app-debug-4:\\drawable_comment_bg_bottom_sheet_dialog.xml.flat",
-        "source": "C:\\Users\\Amit\\.gradle\\daemon\\9.8.1\\com.kazatune.app-main-6:\\drawable\\comment_bg_bottom_sheet_dialog.xml"
+        "merged": "/Users/krixh.../.gradle/daemon/9.8.1/com.kazatune.app-debug-77:/drawable_widget_preview_img_playlists.xml.flat",
+        "source": "/Users/krixh.../.gradle/daemon/9.8.1/com.kazatune.app-main-79:/drawable/widget_preview_img_playlists.xml"
     },
     {
-        "merged": "C:\\Users\\Amit\\.gradle\\daemon\\9.8.1\\com.kazatune.app-debug-4:\\mipmap-xxhdpi_ic_launcher_round.png.flat",
-        "source": "C:\\Users\\Amit\\.gradle\\daemon\\9.8.1\\com.kazatune.app-main-6:\\mipmap-xxhdpi\\ic_launcher_round.png"
+        "merged": "/Users/krixh.../.gradle/daemon/9.8.1/com.kazatune.app-debug-77:/mipmap-xhdpi_ic_launcher.png.flat",
+        "source": "/Users/krixh.../.gradle/daemon/9.8.1/com.kazatune.app-main-79:/mipmap-xhdpi/ic_launcher.png"
     },
     {
-        "merged": "C:\\Users\\Amit\\.gradle\\daemon\\9.8.1\\com.kazatune.app-debug-4:\\mipmap-xxxhdpi_ic_launcher.png.flat",
-        "source": "C:\\Users\\Amit\\.gradle\\daemon\\9.8.1\\com.kazatune.app-main-6:\\mipmap-xxxhdpi\\ic_launcher.png"
+        "merged": "/Users/krixh.../.gradle/daemon/9.8.1/com.kazatune.app-debug-77:/drawable_widget_preview_line.xml.flat",
+        "source": "/Users/krixh.../.gradle/daemon/9.8.1/com.kazatune.app-main-79:/drawable/widget_preview_line.xml"
     },
     {
-        "merged": "com.kazatune.app-debug-4:/drawable-v24_ic_launcher_background.xml.flat",
-        "source": "com.kazatune.app-main-6:/drawable-v24/ic_launcher_background.xml"
+        "merged": "com.kazatune.app-debug-77:/drawable_rounded_skip_next_24.xml.flat",
+        "source": "com.kazatune.app-main-79:/drawable/rounded_skip_next_24.xml"
     },
     {
-        "merged": "C:\\Users\\Amit\\.gradle\\daemon\\9.8.1\\com.kazatune.app-debug-4:\\mipmap-mdpi_ic_launcher.png.flat",
-        "source": "C:\\Users\\Amit\\.gradle\\daemon\\9.8.1\\com.kazatune.app-main-6:\\mipmap-mdpi\\ic_launcher.png"
+        "merged": "/Users/krixh.../.gradle/daemon/9.8.1/com.kazatune.app-debug-77:/mipmap-anydpi-v26_ic_launcher_round.xml.flat",
+        "source": "/Users/krixh.../.gradle/daemon/9.8.1/com.kazatune.app-main-79:/mipmap-anydpi-v26/ic_launcher_round.xml"
     },
     {
-        "merged": "com.kazatune.app-debug-4:/drawable-v24_ic_launcher_foreground.xml.flat",
-        "source": "com.kazatune.app-main-6:/drawable-v24/ic_launcher_foreground.xml"
+        "merged": "/Users/krixh.../.gradle/daemon/9.8.1/com.kazatune.app-debug-77:/drawable_widget_preview_circle.xml.flat",
+        "source": "/Users/krixh.../.gradle/daemon/9.8.1/com.kazatune.app-main-79:/drawable/widget_preview_circle.xml"
     },
     {
-        "merged": "C:\\Users\\Amit\\.gradle\\daemon\\9.8.1\\com.kazatune.app-debug-4:\\mipmap-xxhdpi_ic_launcher.png.flat",
-        "source": "C:\\Users\\Amit\\.gradle\\daemon\\9.8.1\\com.kazatune.app-main-6:\\mipmap-xxhdpi\\ic_launcher.png"
+        "merged": "/Users/krixh.../.gradle/daemon/9.8.1/com.kazatune.app-debug-77:/xml_turntable_widget_info.xml.flat",
+        "source": "/Users/krixh.../.gradle/daemon/9.8.1/com.kazatune.app-main-79:/xml/turntable_widget_info.xml"
     },
     {
-        "merged": "C:\\Users\\Amit\\.gradle\\daemon\\9.8.1\\com.kazatune.app-debug-4:\\mipmap-xhdpi_ic_back_black_online.png.flat",
-        "source": "C:\\Users\\Amit\\.gradle\\daemon\\9.8.1\\com.kazatune.app-main-6:\\mipmap-xhdpi\\ic_back_black_online.png"
+        "merged": "/Users/krixh.../.gradle/daemon/9.8.1/com.kazatune.app-debug-77:/xml_playlists_widget_info.xml.flat",
+        "source": "/Users/krixh.../.gradle/daemon/9.8.1/com.kazatune.app-main-79:/xml/playlists_widget_info.xml"
     },
     {
-        "merged": "C:\\Users\\Amit\\.gradle\\daemon\\9.8.1\\com.kazatune.app-debug-4:\\mipmap-hdpi_ic_back_black_online.png.flat",
-        "source": "C:\\Users\\Amit\\.gradle\\daemon\\9.8.1\\com.kazatune.app-main-6:\\mipmap-hdpi\\ic_back_black_online.png"
+        "merged": "/Users/krixh.../.gradle/daemon/9.8.1/com.kazatune.app-debug-77:/mipmap-mdpi_ic_launcher.png.flat",
+        "source": "/Users/krixh.../.gradle/daemon/9.8.1/com.kazatune.app-main-79:/mipmap-mdpi/ic_launcher.png"
     },
     {
-        "merged": "C:\\Users\\Amit\\.gradle\\daemon\\9.8.1\\com.kazatune.app-debug-4:\\mipmap-xxhdpi_ic_close_black_online.png.flat",
-        "source": "C:\\Users\\Amit\\.gradle\\daemon\\9.8.1\\com.kazatune.app-main-6:\\mipmap-xxhdpi\\ic_close_black_online.png"
+        "merged": "/Users/krixh.../.gradle/daemon/9.8.1/com.kazatune.app-debug-77:/mipmap-xxhdpi_ic_back_black_online.png.flat",
+        "source": "/Users/krixh.../.gradle/daemon/9.8.1/com.kazatune.app-main-79:/mipmap-xxhdpi/ic_back_black_online.png"
     },
     {
-        "merged": "C:\\Users\\Amit\\.gradle\\daemon\\9.8.1\\com.kazatune.app-debug-4:\\mipmap-hdpi_ic_launcher.png.flat",
-        "source": "C:\\Users\\Amit\\.gradle\\daemon\\9.8.1\\com.kazatune.app-main-6:\\mipmap-hdpi\\ic_launcher.png"
+        "merged": "/Users/krixh.../.gradle/daemon/9.8.1/com.kazatune.app-debug-77:/layout_widget_preview_turntable.xml.flat",
+        "source": "/Users/krixh.../.gradle/daemon/9.8.1/com.kazatune.app-main-79:/layout/widget_preview_turntable.xml"
     },
     {
-        "merged": "C:\\Users\\Amit\\.gradle\\daemon\\9.8.1\\com.kazatune.app-debug-4:\\mipmap-hdpi_ic_launcher_round.png.flat",
-        "source": "C:\\Users\\Amit\\.gradle\\daemon\\9.8.1\\com.kazatune.app-main-6:\\mipmap-hdpi\\ic_launcher_round.png"
+        "merged": "com.kazatune.app-debug-77:/drawable_rounded_playlist_play_24.xml.flat",
+        "source": "com.kazatune.app-main-79:/drawable/rounded_playlist_play_24.xml"
     },
     {
-        "merged": "C:\\Users\\Amit\\.gradle\\daemon\\9.8.1\\com.kazatune.app-debug-4:\\mipmap-anydpi-v26_ic_launcher_round.xml.flat",
-        "source": "C:\\Users\\Amit\\.gradle\\daemon\\9.8.1\\com.kazatune.app-main-6:\\mipmap-anydpi-v26\\ic_launcher_round.xml"
+        "merged": "/Users/krixh.../.gradle/daemon/9.8.1/com.kazatune.app-debug-77:/mipmap-mdpi_ic_launcher_round.png.flat",
+        "source": "/Users/krixh.../.gradle/daemon/9.8.1/com.kazatune.app-main-79:/mipmap-mdpi/ic_launcher_round.png"
+    },
+    {
+        "merged": "/Users/krixh.../.gradle/daemon/9.8.1/com.kazatune.app-debug-77:/xml_insights_widget_info.xml.flat",
+        "source": "/Users/krixh.../.gradle/daemon/9.8.1/com.kazatune.app-main-79:/xml/insights_widget_info.xml"
+    },
+    {
+        "merged": "/Users/krixh.../.gradle/daemon/9.8.1/com.kazatune.app-debug-77:/mipmap-xhdpi_ic_back_black_online.png.flat",
+        "source": "/Users/krixh.../.gradle/daemon/9.8.1/com.kazatune.app-main-79:/mipmap-xhdpi/ic_back_black_online.png"
+    },
+    {
+        "merged": "/Users/krixh.../.gradle/daemon/9.8.1/com.kazatune.app-debug-77:/drawable-v24_ic_launcher_background.xml.flat",
+        "source": "/Users/krixh.../.gradle/daemon/9.8.1/com.kazatune.app-main-79:/drawable-v24/ic_launcher_background.xml"
+    },
+    {
+        "merged": "/Users/krixh.../.gradle/daemon/9.8.1/com.kazatune.app-debug-77:/drawable_widget_preview_band.xml.flat",
+        "source": "/Users/krixh.../.gradle/daemon/9.8.1/com.kazatune.app-main-79:/drawable/widget_preview_band.xml"
+    },
+    {
+        "merged": "com.kazatune.app-debug-77:/drawable_rounded_skip_previous_24.xml.flat",
+        "source": "com.kazatune.app-main-79:/drawable/rounded_skip_previous_24.xml"
+    },
+    {
+        "merged": "/Users/krixh.../.gradle/daemon/9.8.1/com.kazatune.app-debug-77:/mipmap-anydpi-v26_ic_launcher.xml.flat",
+        "source": "/Users/krixh.../.gradle/daemon/9.8.1/com.kazatune.app-main-79:/mipmap-anydpi-v26/ic_launcher.xml"
+    },
+    {
+        "merged": "/Users/krixh.../.gradle/daemon/9.8.1/com.kazatune.app-debug-77:/drawable_widget_preview_surface.xml.flat",
+        "source": "/Users/krixh.../.gradle/daemon/9.8.1/com.kazatune.app-main-79:/drawable/widget_preview_surface.xml"
+    },
+    {
+        "merged": "/Users/krixh.../.gradle/daemon/9.8.1/com.kazatune.app-debug-77:/drawable_widget_control_pill.xml.flat",
+        "source": "/Users/krixh.../.gradle/daemon/9.8.1/com.kazatune.app-main-79:/drawable/widget_control_pill.xml"
+    },
+    {
+        "merged": "/Users/krixh.../.gradle/daemon/9.8.1/com.kazatune.app-debug-77:/mipmap-xxxhdpi_ic_launcher_round.png.flat",
+        "source": "/Users/krixh.../.gradle/daemon/9.8.1/com.kazatune.app-main-79:/mipmap-xxxhdpi/ic_launcher_round.png"
+    },
+    {
+        "merged": "/Users/krixh.../.gradle/daemon/9.8.1/com.kazatune.app-debug-77:/drawable_widget_play_disc.xml.flat",
+        "source": "/Users/krixh.../.gradle/daemon/9.8.1/com.kazatune.app-main-79:/drawable/widget_play_disc.xml"
+    },
+    {
+        "merged": "/Users/krixh.../.gradle/daemon/9.8.1/com.kazatune.app-debug-77:/mipmap-hdpi_ic_close_black_online.png.flat",
+        "source": "/Users/krixh.../.gradle/daemon/9.8.1/com.kazatune.app-main-79:/mipmap-hdpi/ic_close_black_online.png"
+    },
+    {
+        "merged": "/Users/krixh.../.gradle/daemon/9.8.1/com.kazatune.app-debug-77:/layout_widget_preview_playlists.xml.flat",
+        "source": "/Users/krixh.../.gradle/daemon/9.8.1/com.kazatune.app-main-79:/layout/widget_preview_playlists.xml"
+    },
+    {
+        "merged": "/Users/krixh.../.gradle/daemon/9.8.1/com.kazatune.app-debug-77:/mipmap-xxhdpi_ic_launcher_round.png.flat",
+        "source": "/Users/krixh.../.gradle/daemon/9.8.1/com.kazatune.app-main-79:/mipmap-xxhdpi/ic_launcher_round.png"
+    },
+    {
+        "merged": "/Users/krixh.../.gradle/daemon/9.8.1/com.kazatune.app-debug-77:/mipmap-xhdpi_ic_launcher_round.png.flat",
+        "source": "/Users/krixh.../.gradle/daemon/9.8.1/com.kazatune.app-main-79:/mipmap-xhdpi/ic_launcher_round.png"
+    },
+    {
+        "merged": "/Users/krixh.../.gradle/daemon/9.8.1/com.kazatune.app-debug-77:/mipmap-xxhdpi_ic_launcher.png.flat",
+        "source": "/Users/krixh.../.gradle/daemon/9.8.1/com.kazatune.app-main-79:/mipmap-xxhdpi/ic_launcher.png"
+    },
+    {
+        "merged": "com.kazatune.app-debug-77:/drawable_rounded_insights_24.xml.flat",
+        "source": "com.kazatune.app-main-79:/drawable/rounded_insights_24.xml"
+    },
+    {
+        "merged": "com.kazatune.app-debug-77:/drawable_rounded_fast_forward_24.xml.flat",
+        "source": "com.kazatune.app-main-79:/drawable/rounded_fast_forward_24.xml"
+    },
+    {
+        "merged": "/Users/krixh.../.gradle/daemon/9.8.1/com.kazatune.app-debug-77:/drawable_holder.png.flat",
+        "source": "/Users/krixh.../.gradle/daemon/9.8.1/com.kazatune.app-main-79:/drawable/holder.png"
+    },
+    {
+        "merged": "/Users/krixh.../.gradle/daemon/9.8.1/com.kazatune.app-debug-77:/drawable_holder_video.png.flat",
+        "source": "/Users/krixh.../.gradle/daemon/9.8.1/com.kazatune.app-main-79:/drawable/holder_video.png"
+    },
+    {
+        "merged": "/Users/krixh.../.gradle/daemon/9.8.1/com.kazatune.app-debug-77:/drawable-v24_ic_launcher_foreground.xml.flat",
+        "source": "/Users/krixh.../.gradle/daemon/9.8.1/com.kazatune.app-main-79:/drawable-v24/ic_launcher_foreground.xml"
+    },
+    {
+        "merged": "/Users/krixh.../.gradle/daemon/9.8.1/com.kazatune.app-debug-77:/drawable_playing_background_bg.xml.flat",
+        "source": "/Users/krixh.../.gradle/daemon/9.8.1/com.kazatune.app-main-79:/drawable/playing_background_bg.xml"
+    },
+    {
+        "merged": "com.kazatune.app-debug-77:/drawable_rounded_pause_24.xml.flat",
+        "source": "com.kazatune.app-main-79:/drawable/rounded_pause_24.xml"
+    },
+    {
+        "merged": "/Users/krixh.../.gradle/daemon/9.8.1/com.kazatune.app-debug-77:/drawable_widget_preview_art.xml.flat",
+        "source": "/Users/krixh.../.gradle/daemon/9.8.1/com.kazatune.app-main-79:/drawable/widget_preview_art.xml"
+    },
+    {
+        "merged": "/Users/krixh.../.gradle/daemon/9.8.1/com.kazatune.app-debug-77:/drawable_widget_preview_img_insights.xml.flat",
+        "source": "/Users/krixh.../.gradle/daemon/9.8.1/com.kazatune.app-main-79:/drawable/widget_preview_img_insights.xml"
+    },
+    {
+        "merged": "/Users/krixh.../.gradle/daemon/9.8.1/com.kazatune.app-debug-77:/mipmap-hdpi_ic_back_black_online.png.flat",
+        "source": "/Users/krixh.../.gradle/daemon/9.8.1/com.kazatune.app-main-79:/mipmap-hdpi/ic_back_black_online.png"
+    },
+    {
+        "merged": "/Users/krixh.../.gradle/daemon/9.8.1/com.kazatune.app-debug-77:/drawable_widget_preview_insights_surface.xml.flat",
+        "source": "/Users/krixh.../.gradle/daemon/9.8.1/com.kazatune.app-main-79:/drawable/widget_preview_insights_surface.xml"
+    },
+    {
+        "merged": "/Users/krixh.../.gradle/daemon/9.8.1/com.kazatune.app-debug-77:/layout_widget_preview_insights.xml.flat",
+        "source": "/Users/krixh.../.gradle/daemon/9.8.1/com.kazatune.app-main-79:/layout/widget_preview_insights.xml"
+    },
+    {
+        "merged": "/Users/krixh.../.gradle/daemon/9.8.1/com.kazatune.app-debug-77:/mipmap-xxhdpi_ic_close_black_online.png.flat",
+        "source": "/Users/krixh.../.gradle/daemon/9.8.1/com.kazatune.app-main-79:/mipmap-xxhdpi/ic_close_black_online.png"
+    },
+    {
+        "merged": "com.kazatune.app-debug-77:/drawable_rounded_play_arrow_24.xml.flat",
+        "source": "com.kazatune.app-main-79:/drawable/rounded_play_arrow_24.xml"
     }
 ]

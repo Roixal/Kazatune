@@ -2,9 +2,11 @@ package com.kazatune.di
 
 import com.kazatune.viewmodel.CommentViewModel
 import com.kazatune.viewmodel.LibraryViewModel
+import com.kazatune.viewmodel.PlaylistMigrationViewModel
 import com.kazatune.viewmodel.SearchViewModel
 import com.kazatune.viewmodel.SettingsViewModel
 import com.kazatune.viewmodel.SkimViewModel
+import com.kazatune.viewmodel.TasteViewModel
 import org.koin.core.module.dsl.viewModel
 import org.koin.dsl.module
 
@@ -24,7 +26,11 @@ val appModule = module {
         SearchViewModel(
             searchRepository = get(),
             homeRepository = get(),
-            mediaPlayerHandler = get()
+            mediaPlayerHandler = get(),
+            albumRepository = get(),
+            playlistRepository = get(),
+            artistRepository = get(),
+            songRepository = get()
         )
     }
     viewModel {
@@ -37,7 +43,8 @@ val appModule = module {
             songRepository = get(),
             localPlaylistRepository = get(),
             playlistRepository = get(),
-            mediaPlayerHandler = get()
+            mediaPlayerHandler = get(),
+            downloadHandler = get()
         )
     }
     viewModel {
@@ -45,6 +52,21 @@ val appModule = module {
             dataStoreManager = get(),
             cacheRepository = get(),
             mediaPlayerHandler = get()
+        )
+    }
+    viewModel {
+        TasteViewModel(
+            songRepository = get(),
+            homeRepository = get()
+        )
+    }
+    viewModel {
+        PlaylistMigrationViewModel(
+            localPlaylistRepository = get(),
+            playlistRepository = get(),
+            searchRepository = get(),
+            songRepository = get(),
+            importRepository = get()
         )
     }
 }

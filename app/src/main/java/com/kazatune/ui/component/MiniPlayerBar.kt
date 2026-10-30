@@ -22,7 +22,8 @@ import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.Surface
+import com.kazatune.ui.theme.LiquidGlassCard
+import com.kazatune.ui.theme.LiquidGlassColors
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -57,14 +58,15 @@ fun MiniPlayerBar(
         enter = slideInVertically(initialOffsetY = { it }),
         exit = slideOutVertically(targetOffsetY = { it })
     ) {
-        Surface(
+        LiquidGlassCard(
             modifier = modifier
                 .fillMaxWidth()
-                .padding(horizontal = 12.dp, vertical = 6.dp)
+                .padding(horizontal = 14.dp, vertical = 4.dp)
                 .clickable { onClick() },
-            shape = RoundedCornerShape(14.dp),
-            color = Color(0xFF1E1D24),
-            shadowElevation = 8.dp
+            shape = RoundedCornerShape(22.dp),
+            backgroundColor = LiquidGlassColors.GlassSurfaceDark,
+            borderBrush = LiquidGlassColors.GlassBorderBrush,
+            borderWidth = 1.dp
         ) {
             Row(
                 modifier = Modifier
@@ -105,7 +107,7 @@ fun MiniPlayerBar(
                         .weight(1f)
                 ) {
                     Text(
-                        text = title.ifBlank { "Kazatune Playing" },
+                        text = title.ifBlank { "Skim Music Playing" },
                         fontFamily = DinProFamily,
                         fontSize = 14.sp,
                         fontWeight = FontWeight.Bold,

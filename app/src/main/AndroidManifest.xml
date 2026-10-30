@@ -87,6 +87,40 @@
             </intent-filter>
         </receiver>
 
+        <!-- Home Screen Widgets -->
+        <receiver
+            android:name=".ui.widget.TurntableWidgetReceiver"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/turntable_widget_info" />
+        </receiver>
+
+        <receiver
+            android:name=".ui.widget.PlaylistsWidgetReceiver"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/playlists_widget_info" />
+        </receiver>
+
+        <receiver
+            android:name=".ui.widget.ListeningInsightsWidgetReceiver"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/insights_widget_info" />
+        </receiver>
+
     </application>
 
 </manifest>
