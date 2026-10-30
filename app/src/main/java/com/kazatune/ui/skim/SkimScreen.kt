@@ -6,9 +6,15 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
@@ -152,6 +158,19 @@ fun SkimScreen(
     val activeMood by skimViewModel.activeMood.collectAsStateWithLifecycle()
     val sponsorBlockToast by skimViewModel.sponsorBlockToast.collectAsStateWithLifecycle()
     val lyricsOffsetMs by skimViewModel.lyricsOffsetMs.collectAsStateWithLifecycle()
+    val isRefreshing by skimViewModel.isRefreshing.collectAsStateWithLifecycle()
+    val sleepTimerState by skimViewModel.sleepTimerState.collectAsStateWithLifecycle()
+
+    val infiniteTransition = rememberInfiniteTransition(label = "RefreshRotation")
+    val refreshRotation by infiniteTransition.animateFloat(
+        initialValue = 0f,
+        targetValue = 360f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(700, easing = LinearEasing),
+            repeatMode = RepeatMode.Restart
+        ),
+        label = "RefreshSpin"
+    )
 
     val configuration = LocalConfiguration.current
     val isLandscape = configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
@@ -269,6 +288,12 @@ fun SkimScreen(
                     }
                 }
 
+                LaunchedEffect(isRefreshing) {
+                    if (!isRefreshing && tracks.isNotEmpty() && pagerState.currentPage != 0) {
+                        pagerState.scrollToPage(0)
+                    }
+                }
+
                 // Smooth Settled Swipe: starts playback only when user completes swipe gesture
                 LaunchedEffect(pagerState) {
                     snapshotFlow { pagerState.settledPage }
@@ -314,6 +339,13 @@ fun SkimScreen(
         }
 
         // Floating SponsorBlock Notification Pill
+        LaunchedEffect(sponsorBlockToast) {
+            if (sponsorBlockToast != null) {
+                delay(2500)
+                skimViewModel.dismissSponsorBlockToast()
+            }
+        }
+
         AnimatedVisibility(
             visible = sponsorBlockToast != null,
             enter = fadeIn() + slideInVertically { -it },
@@ -403,7 +435,11 @@ fun SkimScreen(
                         imageVector = Icons.Default.Refresh,
                         contentDescription = "Refresh",
                         tint = RessoAccent,
-                        modifier = Modifier.size(16.dp)
+                        modifier = Modifier
+                            .size(16.dp)
+                            .graphicsLayer {
+                                rotationZ = if (isRefreshing) refreshRotation else 0f
+                            }
                     )
                 }
 
@@ -659,11 +695,17 @@ fun SkimScreen(
                 }
 
                 // Sleep Timer
+                val sleepRemaining = sleepTimerState.timeRemaining
+                val isSleepTimerActive = sleepRemaining > 0 || sleepRemaining == -1
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
                         .clickable {
-                            skimViewModel.setSleepTimer(30)
+                            if (isSleepTimerActive) {
+                                skimViewModel.setSleepTimer(0)
+                            } else {
+                                skimViewModel.setSleepTimer(30)
+                            }
                             showMoreMenuSheet = false
                         }
                         .padding(vertical = 12.dp),
@@ -671,7 +713,16 @@ fun SkimScreen(
                 ) {
                     Icon(Icons.Default.AvTimer, null, tint = RessoAccent, modifier = Modifier.size(22.dp))
                     Spacer(modifier = Modifier.width(16.dp))
-                    Text("Sleep Timer (30 min)", fontFamily = DinProFamily, fontSize = 15.sp, color = Color.White)
+                    Text(
+                        text = when {
+                            sleepRemaining == -1 -> "Sleep Timer: End of song (Tap to stop)"
+                            sleepRemaining > 0 -> "Sleep Timer: ${sleepRemaining}m left (Tap to stop)"
+                            else -> "Sleep Timer (30 min)"
+                        },
+                        fontFamily = DinProFamily,
+                        fontSize = 15.sp,
+                        color = Color.White
+                    )
                 }
 
                 // Share URL
@@ -680,9 +731,13 @@ fun SkimScreen(
                         .fillMaxWidth()
                         .clickable {
                             currentTrack?.let { track ->
+                                val artist = track.artists?.firstOrNull()?.name ?: "Unknown Artist"
                                 val shareIntent = Intent(Intent.ACTION_SEND).apply {
                                     type = "text/plain"
-                                    putExtra(Intent.EXTRA_TEXT, "https://music.youtube.com/watch?v=${track.videoId}")
+                                    putExtra(
+                                        Intent.EXTRA_TEXT,
+                                        "Listening to \"${track.title}\" by $artist on Skim Music 🎵\nDownload Skim: https://github.com/Roixal/Kazatune/releases/tag/Stable"
+                                    )
                                 }
                                 context.startActivity(Intent.createChooser(shareIntent, "Share Track"))
                             }
@@ -1011,7 +1066,7 @@ fun SkimPageCard(
                         )
                         Spacer(modifier = Modifier.width(4.dp))
                         Text(
-                            text = if (isLiked) "1" else "Like",
+                            text = "Like",
                             fontFamily = DinProFamily,
                             fontSize = 12.sp,
                             color = Color.White

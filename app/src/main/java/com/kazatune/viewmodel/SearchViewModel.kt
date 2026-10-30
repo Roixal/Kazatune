@@ -78,8 +78,26 @@ class SearchViewModel(
         }
     }
 
+    fun resetSearch() {
+        _query.value = ""
+        _searchResults.value = emptyList()
+        _searchAlbumsResult.value = emptyList()
+        _searchArtistsResult.value = emptyList()
+        _searchPlaylistsResult.value = emptyList()
+        _suggestions.value = emptyList()
+        _isSearching.value = false
+        _selectedCategory.value = SearchCategory.SONGS
+        loadSearchHistory()
+    }
+
     fun onQueryChange(newQuery: String) {
         _query.value = newQuery
+        // Clear stale search results while modifying query so suggestions show immediately
+        _searchResults.value = emptyList()
+        _searchAlbumsResult.value = emptyList()
+        _searchArtistsResult.value = emptyList()
+        _searchPlaylistsResult.value = emptyList()
+
         if (newQuery.length >= 2) {
             viewModelScope.launch(Dispatchers.IO) {
                 searchRepository.getSuggestQuery(newQuery).collect { resource ->

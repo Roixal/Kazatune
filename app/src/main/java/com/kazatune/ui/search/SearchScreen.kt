@@ -3,6 +3,7 @@ package com.kazatune.ui.search
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -87,6 +88,11 @@ fun SearchScreen(
     val selectedCategory by searchViewModel.selectedCategory.collectAsStateWithLifecycle()
 
     val focusManager = LocalFocusManager.current
+
+    // Reset search every time user opens the Search section
+    LaunchedEffect(Unit) {
+        searchViewModel.resetSearch()
+    }
 
     val hasResults = when (selectedCategory) {
         SearchCategory.SONGS -> searchResults.isNotEmpty()
@@ -224,7 +230,7 @@ fun SearchScreen(
                 }
 
                 // If user is typing query and suggestions are available
-                suggestions.isNotEmpty() && !hasResults -> {
+                suggestions.isNotEmpty() -> {
                     LazyColumn(
                         modifier = Modifier.fillMaxSize(),
                         contentPadding = PaddingValues(start = 20.dp, end = 20.dp, top = 8.dp, bottom = 120.dp)

@@ -21,6 +21,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 enum class LibraryTab {
     ALL, LIKED, DOWNLOADS, PLAYLISTS
@@ -166,10 +167,40 @@ class LibraryViewModel(
     fun playYtPlaylist(playlist: PlaylistsResult, onTracksLoaded: (List<Track>) -> Unit) {
         viewModelScope.launch(Dispatchers.IO) {
             try {
-                songRepository.getRadioFromEndpoint(YouTubeWatchEndpoint(playlistId = playlist.browseId)).collect { res ->
-                    if (res is Resource.Success && !res.data?.first.isNullOrEmpty()) {
-                        val tracks = res.data!!.first
-                        onTracksLoaded(tracks)
+                var loadedTracks: List<Track>? = null
+                val browseId = playlist.browseId
+                val cleanPlaylistId = if (browseId.startsWith("VL")) browseId.removePrefix("VL") else browseId
+
+                // 1. Try playlistRepository.getPlaylistData with full browseId
+                playlistRepository.getPlaylistData(browseId, "").collect { res ->
+                    if (res is Resource.Success && !res.data?.first?.tracks.isNullOrEmpty()) {
+                        loadedTracks = res.data!!.first.tracks
+                    }
+                }
+
+                // 2. Try playlistRepository.getPlaylistData with clean playlist ID
+                if (loadedTracks.isNullOrEmpty()) {
+                    playlistRepository.getPlaylistData(cleanPlaylistId, "").collect { res ->
+                        if (res is Resource.Success && !res.data?.first?.tracks.isNullOrEmpty()) {
+                            loadedTracks = res.data!!.first.tracks
+                        }
+                    }
+                }
+
+                // 3. Fallback to watch endpoint radio
+                if (loadedTracks.isNullOrEmpty()) {
+                    songRepository.getRadioFromEndpoint(YouTubeWatchEndpoint(playlistId = cleanPlaylistId)).collect { res ->
+                        if (res is Resource.Success && !res.data?.first.isNullOrEmpty()) {
+                            loadedTracks = res.data!!.first
+                        }
+                    }
+                }
+
+                loadedTracks?.let { tracks ->
+                    if (tracks.isNotEmpty()) {
+                        withContext(Dispatchers.Main) {
+                            onTracksLoaded(tracks)
+                        }
                     }
                 }
             } catch (e: Exception) {
@@ -185,7 +216,9 @@ class LibraryViewModel(
             try {
                 songRepository.getSongsByListVideoId(trackIds).collect { songs ->
                     if (songs.isNotEmpty()) {
-                        onTracksLoaded(songs.map { it.toTrack() })
+                        withContext(Dispatchers.Main) {
+                            onTracksLoaded(songs.map { it.toTrack() })
+                        }
                     }
                 }
             } catch (e: Exception) {

@@ -1,4 +1,4 @@
-#Fri Oct 30 15:21:47 IST 2026
+#Fri Oct 30 17:36:26 IST 2026
 base.0=/Users/krixh.../Desktop/Skim/app/build/intermediates/dex/debug/mergeExtDexDebug/classes.dex
 base.1=/Users/krixh.../Desktop/Skim/app/build/intermediates/dex/debug/mergeLibDexDebug/0/classes.dex
 base.10=/Users/krixh.../Desktop/Skim/app/build/intermediates/dex/debug/mergeLibDexDebug/3/classes.dex
@@ -27,6 +27,7 @@ base.30=/Users/krixh.../Desktop/Skim/app/build/intermediates/dex/debug/mergeExtD
 base.31=/Users/krixh.../Desktop/Skim/app/build/intermediates/dex/debug/mergeExtDexDebug/classes5.dex
 base.32=/Users/krixh.../Desktop/Skim/app/build/intermediates/dex/debug/mergeExtDexDebug/classes6.dex
 base.33=/Users/krixh.../Desktop/Skim/app/build/intermediates/dex/debug/mergeExtDexDebug/classes7.dex
+base.34=/Users/krixh.../Desktop/Skim/app/build/intermediates/dex/debug/mergeProjectDexDebug/3/classes.dex
 base.4=/Users/krixh.../Desktop/Skim/app/build/intermediates/dex/debug/mergeLibDexDebug/11/classes.dex
 base.5=/Users/krixh.../Desktop/Skim/app/build/intermediates/dex/debug/mergeLibDexDebug/12/classes.dex
 base.6=/Users/krixh.../Desktop/Skim/app/build/intermediates/dex/debug/mergeLibDexDebug/13/classes.dex
@@ -61,6 +62,7 @@ path.30=classes4.dex
 path.31=classes5.dex
 path.32=classes6.dex
 path.33=classes7.dex
+path.34=3/classes.dex
 path.4=11/classes.dex
 path.5=12/classes.dex
 path.6=13/classes.dex
@@ -95,6 +97,7 @@ renamed.30=classes31.dex
 renamed.31=classes32.dex
 renamed.32=classes33.dex
 renamed.33=classes34.dex
+renamed.34=classes35.dex
 renamed.4=classes5.dex
 renamed.5=classes6.dex
 renamed.6=classes7.dex

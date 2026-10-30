@@ -1,6 +1,12 @@
 package com.kazatune.ui.settings
 
+import android.content.Intent
+import android.net.Uri
 import android.view.ViewGroup
+import androidx.activity.compose.BackHandler
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
+import coil3.compose.AsyncImage
 import android.webkit.CookieManager
 import android.webkit.WebView
 import android.webkit.WebViewClient
@@ -25,6 +31,8 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.NavigateNext
 import androidx.compose.material.icons.automirrored.filled.VolumeUp
 import androidx.compose.material.icons.filled.AccountCircle
 import androidx.compose.material.icons.filled.AvTimer
@@ -39,7 +47,9 @@ import androidx.compose.material.icons.filled.Login
 import androidx.compose.material.icons.filled.Logout
 import androidx.compose.material.icons.filled.Radio
 import androidx.compose.material.icons.filled.Storage
+import androidx.compose.material.icons.filled.Sync
 import androidx.compose.material.icons.filled.Wallpaper
+import com.kazatune.viewmodel.UpdateViewModel
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -79,6 +89,7 @@ import org.koin.androidx.compose.koinViewModel
 @Composable
 fun SettingsScreen(
     settingsViewModel: SettingsViewModel = koinViewModel(),
+    updateViewModel: UpdateViewModel = koinViewModel(),
     modifier: Modifier = Modifier
 ) {
     val quality by settingsViewModel.quality.collectAsStateWithLifecycle()
@@ -90,6 +101,19 @@ fun SettingsScreen(
     val sponsorBlockEnabled by settingsViewModel.sponsorBlockEnabled.collectAsStateWithLifecycle()
     val lastfmUsername by settingsViewModel.lastfmUsername.collectAsStateWithLifecycle()
     val lastfmScrobbleEnabled by settingsViewModel.lastfmScrobbleEnabled.collectAsStateWithLifecycle()
+    val isAutoUpdateEnabled by updateViewModel.isAutoUpdateEnabled.collectAsStateWithLifecycle()
+
+    val context = LocalContext.current
+
+    var showAboutScreen by remember { mutableStateOf(false) }
+
+    if (showAboutScreen) {
+        AboutScreen(
+            onBack = { showAboutScreen = false },
+            updateViewModel = updateViewModel
+        )
+        return
+    }
 
     var showQualityDialog by remember { mutableStateOf(false) }
     var showWebLoginDialog by remember { mutableStateOf(false) }
@@ -389,7 +413,7 @@ fun SettingsScreen(
             }
 
             item {
-                val timerMinutes = if (sleepTimerState.timeRemaining > 0) sleepTimerState.timeRemaining / 60 else 0
+                val timerMinutes = if (sleepTimerState.timeRemaining > 0) sleepTimerState.timeRemaining else 0
                 val timerText = if (timerMinutes > 0) "$timerMinutes min remaining" else "Timer Off"
 
                 Surface(
@@ -542,6 +566,29 @@ fun SettingsScreen(
                 }
             }
 
+            // Section: App Updates
+            item {
+                Spacer(modifier = Modifier.height(4.dp))
+                SettingsSectionHeader("App Updates")
+            }
+
+            item {
+                AppUpdatesCard(
+                    updateViewModel = updateViewModel,
+                    onOpenDialog = { updateViewModel.openDialog() }
+                )
+            }
+
+            item {
+                SettingsSwitchCard(
+                    icon = Icons.Default.Sync,
+                    title = "Automatic Update Checking",
+                    subtitle = "Periodically check for updates in the background",
+                    checked = isAutoUpdateEnabled,
+                    onCheckedChange = { updateViewModel.toggleAutoUpdate(it) }
+                )
+            }
+
             // Section: About Skim Music
             item {
                 Spacer(modifier = Modifier.height(4.dp))
@@ -552,9 +599,17 @@ fun SettingsScreen(
                 Surface(
                     shape = RoundedCornerShape(12.dp),
                     color = Color(0xFF181720),
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { showAboutScreen = true }
                 ) {
-                    Column(modifier = Modifier.padding(16.dp)) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Box(
                                 modifier = Modifier
@@ -573,28 +628,26 @@ fun SettingsScreen(
                             Spacer(modifier = Modifier.width(14.dp))
                             Column {
                                 Text(
-                                    text = "Skim Music",
+                                    text = "About Skim Music",
                                     fontFamily = DinProFamily,
-                                    fontSize = 16.sp,
-                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 15.sp,
+                                    fontWeight = FontWeight.SemiBold,
                                     color = Color.White
                                 )
                                 Spacer(modifier = Modifier.height(2.dp))
                                 Text(
-                                    text = "Version 1.0.0 (Release)",
+                                    text = "Version ${updateViewModel.currentVersionName} • Features & Developers",
                                     fontFamily = DinProFamily,
                                     fontSize = 12.sp,
                                     color = Color(0x88FFFFFF)
                                 )
                             }
                         }
-                        Spacer(modifier = Modifier.height(10.dp))
-                        Text(
-                            text = "A lightweight, standalone music streaming experience pairing Resso's immersive full-screen UI with high-fidelity 160 kbps Innertube audio streaming.",
-                            fontFamily = DinProFamily,
-                            fontSize = 12.sp,
-                            color = Color(0x77FFFFFF),
-                            lineHeight = 18.sp
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.NavigateNext,
+                            contentDescription = "Open About",
+                            tint = Color(0x66FFFFFF),
+                            modifier = Modifier.size(20.dp)
                         )
                     }
                 }
@@ -1028,6 +1081,376 @@ fun SettingsSwitchCard(
                     uncheckedTrackColor = Color(0xFF2C2B36)
                 )
             )
+        }
+    }
+}
+
+@Composable
+fun AboutScreen(
+    onBack: () -> Unit,
+    updateViewModel: UpdateViewModel = koinViewModel()
+) {
+    BackHandler(enabled = true) { onBack() }
+    val context = LocalContext.current
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color(0xFF0F0E13))
+            .statusBarsPadding()
+            .padding(top = 12.dp)
+    ) {
+        // Top Navigation Bar with Back Button
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 8.dp, vertical = 6.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            IconButton(onClick = onBack) {
+                Icon(
+                    imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                    contentDescription = "Back",
+                    tint = Color.White
+                )
+            }
+            Spacer(modifier = Modifier.width(6.dp))
+            Text(
+                text = "About Skim Music",
+                fontFamily = DinProFamily,
+                fontSize = 20.sp,
+                fontWeight = FontWeight.Bold,
+                color = Color.White
+            )
+        }
+
+        LazyColumn(
+            modifier = Modifier.fillMaxSize(),
+            contentPadding = PaddingValues(start = 20.dp, end = 20.dp, top = 8.dp, bottom = 120.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            // Hero Card
+            item {
+                Surface(
+                    shape = RoundedCornerShape(16.dp),
+                    color = Color(0xFF181720),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Column(modifier = Modifier.padding(18.dp)) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Box(
+                                modifier = Modifier
+                                    .size(50.dp)
+                                    .clip(RoundedCornerShape(12.dp))
+                                    .background(Color(0xFF252430)),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Info,
+                                    contentDescription = null,
+                                    tint = RessoAccent,
+                                    modifier = Modifier.size(28.dp)
+                                )
+                            }
+                            Spacer(modifier = Modifier.width(14.dp))
+                            Column {
+                                Text(
+                                    text = "Skim Music",
+                                    fontFamily = DinProFamily,
+                                    fontSize = 20.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color.White
+                                )
+                                Spacer(modifier = Modifier.height(2.dp))
+                                Text(
+                                    text = "Version ${updateViewModel.currentVersionName} (Stable Release)",
+                                    fontFamily = DinProFamily,
+                                    fontSize = 12.sp,
+                                    color = RessoAccent
+                                )
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.height(14.dp))
+                        Text(
+                            text = "A next-generation music streaming experience blending TikTok and Resso's fluid vertical discovery feed with Apple's Liquid Glass aesthetics and the entire YouTube Music catalog.",
+                            fontFamily = DinProFamily,
+                            fontSize = 13.sp,
+                            color = Color(0xCCFFFFFF),
+                            lineHeight = 19.sp
+                        )
+                    }
+                }
+            }
+
+            // Updates Card inside About Screen
+            item {
+                AppUpdatesCard(
+                    updateViewModel = updateViewModel,
+                    onOpenDialog = { updateViewModel.openDialog() }
+                )
+            }
+
+            // Core Features
+            item {
+                Surface(
+                    shape = RoundedCornerShape(16.dp),
+                    color = Color(0xFF181720),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Column(modifier = Modifier.padding(18.dp)) {
+                        Text(
+                            text = "Core Features",
+                            fontFamily = DinProFamily,
+                            fontSize = 15.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color.White
+                        )
+                        Spacer(modifier = Modifier.height(10.dp))
+
+                        val features = listOf(
+                            "📱 Vertical Discovery Feed" to "Continuous swipe through endless songs with instant previews",
+                            "🎯 Hook Jump" to "One-tap jump straight to the song's chorus or peak moment",
+                            "🎤 Word-by-Word Synced Lyrics" to "Real-time scrolling karaoke lyrics with timing offset calibration",
+                            "💿 Self-Healing Playback" to "Tap the spinning vinyl disc to instantly purge stalls and reload stream tokens",
+                            "🎛️ Dual-Pane Landscape Player" to "Dedicated tablet and landscape player with vinyl turntable and synced lyrics",
+                            "📲 Home Screen Glance Widgets" to "Interactive Turntable widget, Recent Playlists, and 30-Day Insights",
+                            "🧠 On-Device AI Music Taste Engine" to "Private listening analysis and dynamic personas without paid API keys",
+                            "🔄 Universal Playlist Migration" to "One-tap conversion from Spotify, YouTube, or raw tracklist text",
+                            "🛡️ SponsorBlock & Last.fm" to "Automatic non-music segment skipping and background scrobbling"
+                        )
+
+                        features.forEach { (title, desc) ->
+                            Column(modifier = Modifier.padding(vertical = 5.dp)) {
+                                Text(
+                                    text = title,
+                                    fontFamily = DinProFamily,
+                                    fontSize = 13.sp,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = Color(0xFFE2E2E8)
+                                )
+                                Text(
+                                    text = desc,
+                                    fontFamily = DinProFamily,
+                                    fontSize = 11.sp,
+                                    color = Color(0x88FFFFFF),
+                                    lineHeight = 15.sp
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Official Stable Release Page Button
+            item {
+                Surface(
+                    shape = RoundedCornerShape(14.dp),
+                    color = Color(0x33FF0050),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable {
+                            val intent = Intent(
+                                Intent.ACTION_VIEW,
+                                Uri.parse("https://github.com/Roixal/Kazatune/releases/tag/Stable")
+                            )
+                            context.startActivity(intent)
+                        }
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp, vertical = 14.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column {
+                            Text(
+                                text = "Official Stable Release",
+                                fontFamily = DinProFamily,
+                                fontSize = 14.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = Color.White
+                            )
+                            Spacer(modifier = Modifier.height(2.dp))
+                            Text(
+                                text = "github.com/Roixal/Kazatune/releases/tag/Stable",
+                                fontFamily = DinProFamily,
+                                fontSize = 11.sp,
+                                color = Color(0xAAFFFFFF)
+                            )
+                        }
+                        Icon(
+                            imageVector = Icons.Default.Bolt,
+                            contentDescription = "Release",
+                            tint = RessoAccent,
+                            modifier = Modifier.size(22.dp)
+                        )
+                    }
+                }
+            }
+
+            // Developers Section
+            item {
+                Surface(
+                    shape = RoundedCornerShape(16.dp),
+                    color = Color(0xFF181720),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Column(modifier = Modifier.padding(18.dp)) {
+                        Text(
+                            text = "Developers",
+                            fontFamily = DinProFamily,
+                            fontSize = 15.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color.White
+                        )
+                        Spacer(modifier = Modifier.height(12.dp))
+
+                        // Developer 1: KRISH KUMAR
+                        Surface(
+                            shape = RoundedCornerShape(12.dp),
+                            color = Color(0xFF201F2B),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable {
+                                    val intent = Intent(
+                                        Intent.ACTION_VIEW,
+                                        Uri.parse("https://github.com/kkrriish10")
+                                    )
+                                    context.startActivity(intent)
+                                }
+                        ) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 14.dp, vertical = 12.dp),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Box(
+                                        modifier = Modifier
+                                            .size(44.dp)
+                                            .clip(CircleShape)
+                                            .background(Color(0xFF2D2C3D)),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Text(
+                                            text = "KK",
+                                            fontFamily = DinProFamily,
+                                            fontSize = 14.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            color = Color.White
+                                        )
+                                        AsyncImage(
+                                            model = "https://github.com/kkrriish10.png",
+                                            contentDescription = "KRISH KUMAR",
+                                            contentScale = ContentScale.Crop,
+                                            modifier = Modifier.fillMaxSize()
+                                        )
+                                    }
+                                    Spacer(modifier = Modifier.width(14.dp))
+                                    Column {
+                                        Text(
+                                            text = "KRISH KUMAR",
+                                            fontFamily = DinProFamily,
+                                            fontSize = 14.sp,
+                                            fontWeight = FontWeight.SemiBold,
+                                            color = Color.White
+                                        )
+                                        Text(
+                                            text = "@kkrriish10",
+                                            fontFamily = DinProFamily,
+                                            fontSize = 12.sp,
+                                            color = Color(0x88FFFFFF)
+                                        )
+                                    }
+                                }
+                                Text(
+                                    text = "Developer",
+                                    fontFamily = DinProFamily,
+                                    fontSize = 12.sp,
+                                    color = RessoAccent,
+                                    fontWeight = FontWeight.Medium
+                                )
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.height(10.dp))
+
+                        // Developer 2: Roixal
+                        Surface(
+                            shape = RoundedCornerShape(12.dp),
+                            color = Color(0xFF201F2B),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable {
+                                    val intent = Intent(
+                                        Intent.ACTION_VIEW,
+                                        Uri.parse("https://github.com/Roixal")
+                                    )
+                                    context.startActivity(intent)
+                                }
+                        ) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 14.dp, vertical = 12.dp),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Box(
+                                        modifier = Modifier
+                                            .size(44.dp)
+                                            .clip(CircleShape)
+                                            .background(Color(0xFF2D2C3D)),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Text(
+                                            text = "RX",
+                                            fontFamily = DinProFamily,
+                                            fontSize = 14.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            color = Color.White
+                                        )
+                                        AsyncImage(
+                                            model = "https://github.com/Roixal.png",
+                                            contentDescription = "Roixal",
+                                            contentScale = ContentScale.Crop,
+                                            modifier = Modifier.fillMaxSize()
+                                        )
+                                    }
+                                    Spacer(modifier = Modifier.width(14.dp))
+                                    Column {
+                                        Text(
+                                            text = "Roixal",
+                                            fontFamily = DinProFamily,
+                                            fontSize = 14.sp,
+                                            fontWeight = FontWeight.SemiBold,
+                                            color = Color.White
+                                        )
+                                        Text(
+                                            text = "@Roixal",
+                                            fontFamily = DinProFamily,
+                                            fontSize = 12.sp,
+                                            color = Color(0x88FFFFFF)
+                                        )
+                                    }
+                                }
+                                Text(
+                                    text = "Developer",
+                                    fontFamily = DinProFamily,
+                                    fontSize = 12.sp,
+                                    color = RessoAccent,
+                                    fontWeight = FontWeight.Medium
+                                )
+                            }
+                        }
+                    }
+                }
+            }
         }
     }
 }

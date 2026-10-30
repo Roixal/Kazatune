@@ -12,6 +12,13 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.content.ContextCompat
+import android.content.Intent
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.ui.platform.LocalContext
+import com.kazatune.updater.UpdateNotificationHelper
+import com.kazatune.updater.model.UpdateStatus
+import com.kazatune.updater.ui.UpdateDialog
+import com.kazatune.viewmodel.UpdateViewModel
 import com.maxrave.media3.di.setServiceActivitySession
 import com.maxrave.media3.di.startService
 import androidx.compose.foundation.background
@@ -94,15 +101,34 @@ class MainActivity : ComponentActivity() {
         }
         super.onDestroy()
     }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+    }
 }
 
 @Composable
 fun MainRootScreen(
-    skimViewModel: SkimViewModel = koinViewModel()
+    skimViewModel: SkimViewModel = koinViewModel(),
+    updateViewModel: UpdateViewModel = koinViewModel()
 ) {
+    val context = LocalContext.current
     var currentTab by rememberSaveable { mutableStateOf(MainTab.SKIM) }
     val nowPlaying by skimViewModel.nowPlaying.collectAsStateWithLifecycle()
     val controlState by skimViewModel.controlState.collectAsStateWithLifecycle()
+
+    val updateStatus by updateViewModel.updateStatus.collectAsStateWithLifecycle()
+    val showUpdateDialog by updateViewModel.showUpdateDialog.collectAsStateWithLifecycle()
+
+    LaunchedEffect(Unit) {
+        val activity = context as? ComponentActivity
+        val showUpdateFromIntent = activity?.intent?.getBooleanExtra(UpdateNotificationHelper.EXTRA_SHOW_UPDATE, false) == true
+        if (showUpdateFromIntent) {
+            updateViewModel.openDialog()
+        }
+        updateViewModel.checkOnAppLaunch()
+    }
 
     Box(
         modifier = Modifier
@@ -133,7 +159,7 @@ fun MainRootScreen(
                         currentTab = MainTab.SKIM
                     }
                 )
-                MainTab.SETTINGS -> SettingsScreen()
+                MainTab.SETTINGS -> SettingsScreen(updateViewModel = updateViewModel)
             }
         }
 
@@ -154,6 +180,36 @@ fun MainRootScreen(
             KazatuneBottomBar(
                 currentTab = currentTab,
                 onTabSelected = { currentTab = it }
+            )
+        }
+
+        // In-App Update Dialog (Overlay)
+        if (showUpdateDialog) {
+            val release = when (val s = updateStatus) {
+                is UpdateStatus.UpdateAvailable -> s.release
+                is UpdateStatus.Downloading -> s.release
+                is UpdateStatus.ReadyToInstall -> s.release
+                else -> null
+            }
+
+            UpdateDialog(
+                status = updateStatus,
+                currentVersion = updateViewModel.currentVersionName,
+                onDismiss = {
+                    updateViewModel.dismissDialog(release)
+                },
+                onDownload = { rel ->
+                    updateViewModel.downloadAndInstall(context, rel)
+                },
+                onInstall = { file ->
+                    updateViewModel.triggerInstall(context, file)
+                },
+                onCancelDownload = {
+                    updateViewModel.cancelDownload()
+                },
+                onRetry = {
+                    updateViewModel.checkForUpdates(manual = true)
+                }
             )
         }
     }

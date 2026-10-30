@@ -96,6 +96,7 @@ fun LibraryScreen(
 
     var showTasteSheet by remember { mutableStateOf(false) }
     var showMigrationDialog by remember { mutableStateOf(false) }
+    var loadingYtPlaylistId by remember { mutableStateOf<String?>(null) }
     val tasteSheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
 
     // Handle back button when either banner view is open
@@ -369,10 +370,14 @@ fun LibraryScreen(
 
                     if (ytPlaylists.isNotEmpty()) {
                         items(ytPlaylists) { ytPlaylist ->
+                            val isItemLoading = loadingYtPlaylistId == ytPlaylist.browseId
                             YtPlaylistListItem(
                                 playlist = ytPlaylist,
+                                isLoading = isItemLoading,
                                 onPlay = {
+                                    loadingYtPlaylistId = ytPlaylist.browseId
                                     libraryViewModel.playYtPlaylist(ytPlaylist) { tracks ->
+                                        loadingYtPlaylistId = null
                                         if (tracks.isNotEmpty()) {
                                             onPlayTracks(tracks, 0)
                                         }
@@ -1203,7 +1208,8 @@ fun DownloadedSongsBannerExpandedView(
 fun YtPlaylistListItem(
     playlist: PlaylistsResult,
     onPlay: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    isLoading: Boolean = false
 ) {
     val thumbnailUrl = playlist.thumbnails.lastOrNull()?.url
 
@@ -1212,7 +1218,7 @@ fun YtPlaylistListItem(
         color = Color(0xFF181720),
         modifier = modifier
             .fillMaxWidth()
-            .clickable { onPlay() }
+            .clickable(enabled = !isLoading) { onPlay() }
     ) {
         Row(
             modifier = Modifier
@@ -1275,17 +1281,26 @@ fun YtPlaylistListItem(
 
             IconButton(
                 onClick = onPlay,
+                enabled = !isLoading,
                 modifier = Modifier
                     .size(34.dp)
                     .clip(CircleShape)
                     .background(Color(0xFF2B2A36))
             ) {
-                Icon(
-                    imageVector = Icons.Default.PlayArrow,
-                    contentDescription = "Play Playlist",
-                    tint = Color.White,
-                    modifier = Modifier.size(18.dp)
-                )
+                if (isLoading) {
+                    CircularProgressIndicator(
+                        color = Color(0xFFFF0050),
+                        strokeWidth = 2.dp,
+                        modifier = Modifier.size(16.dp)
+                    )
+                } else {
+                    Icon(
+                        imageVector = Icons.Default.PlayArrow,
+                        contentDescription = "Play Playlist",
+                        tint = Color.White,
+                        modifier = Modifier.size(18.dp)
+                    )
+                }
             }
         }
     }

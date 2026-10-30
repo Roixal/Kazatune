@@ -19,6 +19,7 @@
     <uses-permission
         android:name="android.permission.WRITE_EXTERNAL_STORAGE"
         android:maxSdkVersion="28" />
+    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
 
     <queries>
         <provider
@@ -143,6 +144,17 @@
                 android:name="android.appwidget.provider"
                 android:resource="@xml/insights_widget_info" />
         </receiver>
+
+        <!-- Secure In-App Update APK FileProvider -->
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="com.kazatune.debug.fileprovider"
+            android:exported="false"
+            android:grantUriPermissions="true" >
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/file_paths" />
+        </provider>
 
         <service
             android:name="androidx.car.app.CarAppMetadataHolderService"

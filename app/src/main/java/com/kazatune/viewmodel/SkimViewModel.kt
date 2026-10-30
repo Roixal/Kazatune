@@ -21,6 +21,7 @@ import com.maxrave.domain.mediaservice.handler.SimpleMediaState
 import com.maxrave.domain.mediaservice.handler.ToastType
 import com.maxrave.domain.repository.HomeRepository
 import com.maxrave.domain.repository.LyricsCanvasRepository
+import com.maxrave.domain.repository.SearchRepository
 import com.maxrave.domain.repository.SongRepository
 import com.maxrave.domain.repository.StreamRepository
 import com.maxrave.domain.utils.Resource
@@ -28,6 +29,7 @@ import com.maxrave.domain.utils.toLyrics
 import com.maxrave.domain.utils.toLyricsEntity
 import com.maxrave.domain.utils.toSongEntity
 import com.maxrave.domain.utils.toSyncedLyrics
+import com.maxrave.domain.utils.toTrack
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -60,7 +62,8 @@ class SkimViewModel(
     private val lyricsCanvasRepository: LyricsCanvasRepository,
     private val streamRepository: StreamRepository,
     private val downloadHandler: DownloadHandler,
-    private val dataStoreManager: DataStoreManager
+    private val dataStoreManager: DataStoreManager,
+    private val searchRepository: SearchRepository
 ) : ViewModel() {
 
     private val _skimTab = MutableStateFlow(SkimTab.FOR_YOU)
@@ -134,6 +137,13 @@ class SkimViewModel(
     private val _lyricsOffsetMs = MutableStateFlow(0L)
     val lyricsOffsetMs: StateFlow<Long> = _lyricsOffsetMs.asStateFlow()
 
+    // Refreshing status indicator
+    private val _isRefreshing = MutableStateFlow(false)
+    val isRefreshing: StateFlow<Boolean> = _isRefreshing.asStateFlow()
+
+    // Sleep Timer State exposed from handler
+    val sleepTimerState = mediaPlayerHandler.sleepTimerState
+
     private var lyricsJob: Job? = null
     private var radioJob: Job? = null
     private var progressTickerJob: Job? = null
@@ -141,6 +151,7 @@ class SkimViewModel(
     private var loadingMore = false
     private var lastScrobbledVideoId: String? = null
     private var trackStartEpochSeconds: Long = 0L
+    private val cachedMoodParams = mutableMapOf<String, String>()
 
     init {
         loadFeed(SkimTab.FOR_YOU)
@@ -148,7 +159,24 @@ class SkimViewModel(
         observePlayback()
         observeSponsorBlock()
         startPositionTicker()
+        loadMoodCategories()
         // explore data is lazy-loaded when the user selects Explore tab
+    }
+
+    private fun loadMoodCategories() {
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                homeRepository.getMoodAndMomentsData().collect { res ->
+                    if (res is Resource.Success && res.data != null) {
+                        res.data!!.sections.forEach { section ->
+                            section.items.forEach { item ->
+                                cachedMoodParams[item.title.lowercase().trim()] = item.params
+                            }
+                        }
+                    }
+                }
+            } catch (_: Exception) {}
+        }
     }
 
     private fun startPositionTicker() {
@@ -208,6 +236,7 @@ class SkimViewModel(
      */
     fun refreshFeed() {
         refreshCounter++
+        _isRefreshing.value = true
         viewModelScope.launch(Dispatchers.IO) {
             try {
                 if (_skimTab.value == SkimTab.FOR_YOU) {
@@ -217,9 +246,11 @@ class SkimViewModel(
                             if (res is Resource.Success && !res.data.isNullOrEmpty()) {
                                 val list = res.data!!.flatMap { it.contents }.filterNotNull().map { it.toTrack() }.shuffled()
                                 if (list.isNotEmpty()) {
-                                    _tracks.value = list
-                                    _currentIndex.value = 0
-                                    playTrackAt(0)
+                                    withContext(Dispatchers.Main) {
+                                        _tracks.value = list
+                                        _currentIndex.value = 0
+                                        playTrackAt(0)
+                                    }
                                 }
                             }
                         }
@@ -229,18 +260,24 @@ class SkimViewModel(
                                 val shelves = res.data?.second ?: emptyList()
                                 val list = shelves.flatMap { it.contents }.filterNotNull().map { it.toTrack() }.shuffled()
                                 if (list.isNotEmpty()) {
-                                    _tracks.value = list
-                                    _currentIndex.value = 0
-                                    playTrackAt(0)
+                                    withContext(Dispatchers.Main) {
+                                        _tracks.value = list
+                                        _currentIndex.value = 0
+                                        playTrackAt(0)
+                                    }
                                 }
                             }
                         }
                     }
-                } else {
+                } else if (_skimTab.value == SkimTab.EXPLORE) {
                     loadExploreData(_selectedGenre.value)
+                } else {
+                    selectMood(_activeMood.value)
                 }
             } catch (e: Exception) {
                 e.printStackTrace()
+            } finally {
+                _isRefreshing.value = false
             }
         }
     }
@@ -461,12 +498,20 @@ class SkimViewModel(
         }
     }
 
+    private fun isCurrentTrack(videoId: String): Boolean {
+        val current = _tracks.value.getOrNull(_currentIndex.value)?.videoId
+            ?: mediaPlayerHandler.nowPlayingState.value.mediaItem.mediaId
+        return current == videoId
+    }
+
     /**
      * Bug 8: Fetches both Spotify Canvas and Apple Music animated artwork
      */
     private fun fetchCanvas(videoId: String, durationSeconds: Int) {
         viewModelScope.launch(Dispatchers.IO) {
-            _currentCanvas.value = null
+            if (isCurrentTrack(videoId)) {
+                _currentCanvas.value = null
+            }
             try {
                 val canvasEnabled = dataStoreManager.spotifyCanvas.first() == DataStoreManager.Values.TRUE
                 if (canvasEnabled) {
@@ -475,7 +520,9 @@ class SkimViewModel(
                     lyricsCanvasRepository.getCanvas(dataStoreManager, videoId, durationSeconds).collect { res ->
                         val payload = res.data
                         if (res is Resource.Success && payload != null) {
-                            _currentCanvas.value = payload
+                            if (isCurrentTrack(videoId)) {
+                                _currentCanvas.value = payload
+                            }
                             found = true
                         }
                     }
@@ -485,12 +532,16 @@ class SkimViewModel(
                     lyricsCanvasRepository.getAMAnimatedArtwork(videoId).collect { res ->
                         val payload = res.data
                         if (res is Resource.Success && payload != null) {
-                            _currentCanvas.value = payload
+                            if (isCurrentTrack(videoId)) {
+                                _currentCanvas.value = payload
+                            }
                         }
                     }
                 }
             } catch (_: Exception) {
-                _currentCanvas.value = null
+                if (isCurrentTrack(videoId)) {
+                    _currentCanvas.value = null
+                }
             }
         }
     }
@@ -498,12 +549,16 @@ class SkimViewModel(
     private fun fetchLyrics(videoId: String, artist: String, title: String, durationSeconds: Int) {
         lyricsJob?.cancel()
         lyricsJob = viewModelScope.launch(Dispatchers.IO) {
-            _currentLyrics.value = null
+            if (isCurrentTrack(videoId)) {
+                _currentLyrics.value = null
+            }
             try {
                 // 1. Check local saved lyrics
                 val saved = lyricsCanvasRepository.getSavedLyrics(videoId).firstOrNull()
                 if (saved != null && !saved.lines.isNullOrEmpty()) {
-                    _currentLyrics.value = saved.toLyrics().toSyncedLyrics()
+                    if (isCurrentTrack(videoId)) {
+                        _currentLyrics.value = saved.toLyrics().toSyncedLyrics()
+                    }
                     return@launch
                 }
 
@@ -524,8 +579,10 @@ class SkimViewModel(
 
                 val lrclibLyrics = foundLyrics
                 if (lrclibLyrics != null) {
-                    _currentLyrics.value = lrclibLyrics
                     lyricsCanvasRepository.insertLyrics(lrclibLyrics.toLyricsEntity(videoId))
+                    if (isCurrentTrack(videoId)) {
+                        _currentLyrics.value = lrclibLyrics
+                    }
                     return@launch
                 }
 
@@ -539,8 +596,10 @@ class SkimViewModel(
 
                 val betterLyrics = foundLyrics
                 if (betterLyrics != null) {
-                    _currentLyrics.value = betterLyrics
                     lyricsCanvasRepository.insertLyrics(betterLyrics.toLyricsEntity(videoId))
+                    if (isCurrentTrack(videoId)) {
+                        _currentLyrics.value = betterLyrics
+                    }
                     return@launch
                 }
 
@@ -554,8 +613,10 @@ class SkimViewModel(
 
                 val ytLyrics = foundLyrics
                 if (ytLyrics != null) {
-                    _currentLyrics.value = ytLyrics
                     lyricsCanvasRepository.insertLyrics(ytLyrics.toLyricsEntity(videoId))
+                    if (isCurrentTrack(videoId)) {
+                        _currentLyrics.value = ytLyrics
+                    }
                 }
             } catch (e: Exception) {
                 e.printStackTrace()
@@ -757,14 +818,44 @@ class SkimViewModel(
                     isDownloading = false,
                     isVideo = false
                 ).collect {}
-                // 2. Preload Canvas
+                // 2. Preload lyrics directly into Room database WITHOUT overwriting active _currentLyrics
                 val duration = track.durationSeconds ?: 0
-                fetchCanvas(track.videoId, duration)
-                // 3. Preload Lyrics
                 val artist = track.artists?.firstOrNull()?.name ?: ""
-                fetchLyrics(track.videoId, artist, track.title, duration)
+                preloadLyricsQuietly(track.videoId, artist, track.title, duration)
             } catch (_: Exception) {}
         }
+    }
+
+    private suspend fun preloadLyricsQuietly(videoId: String, artist: String, title: String, durationSeconds: Int) {
+        try {
+            val saved = lyricsCanvasRepository.getSavedLyrics(videoId).firstOrNull()
+            if (saved != null && !saved.lines.isNullOrEmpty()) return
+
+            val cleanTitle = title
+                .replace(Regex("""(?i)\s*[\(\[](official\s*video|official\s*music\s*video|official\s*audio|audio|mv|visualizer|lyric\s*video|from\s*["'].*?["'])[\)\]]"""), "")
+                .trim()
+
+            var found: Lyrics? = null
+            lyricsCanvasRepository.getLrclibLyricsData(artist, cleanTitle, durationSeconds).collect { res ->
+                val payload = res.data
+                if (res is Resource.Success && payload != null && !payload.lines.isNullOrEmpty()) {
+                    found = payload.toSyncedLyrics()
+                }
+            }
+            if (found != null) {
+                lyricsCanvasRepository.insertLyrics(found!!.toLyricsEntity(videoId))
+                return
+            }
+            lyricsCanvasRepository.getBetterLyrics(artist, cleanTitle, durationSeconds).collect { res ->
+                val payload = res.data
+                if (res is Resource.Success && payload != null && !payload.lines.isNullOrEmpty()) {
+                    found = payload.toSyncedLyrics()
+                }
+            }
+            if (found != null) {
+                lyricsCanvasRepository.insertLyrics(found!!.toLyricsEntity(videoId))
+            }
+        } catch (_: Exception) {}
     }
 
     // Component 4: Resso-style Hook/Chorus Jump
@@ -789,14 +880,49 @@ class SkimViewModel(
         _isMoodLoading.value = true
         viewModelScope.launch(Dispatchers.IO) {
             try {
-                val cleanMood = mood.replace(Regex("""[^a-zA-Z]"""), "").trim()
-                homeRepository.getMoodData(cleanMood.ifBlank { "Chill" }).collect { res ->
-                    if (res is Resource.Success && res.data != null) {
-                        val tracks = res.data!!.items
-                            .flatMap { it.contents }
-                            .map { it.toTrack() }
-                            .filter { it.videoId.isNotBlank() }
-                        _moodTracks.value = tracks
+                val cleanMood = mood.replace(Regex("""[^a-zA-Z0-9\s]"""), "").trim()
+                val moodKey = cleanMood.lowercase()
+                var loaded = false
+
+                // 1. Check if we have YouTube InnerTube params for this mood
+                val matchedParam = cachedMoodParams[moodKey]
+                    ?: cachedMoodParams.entries.firstOrNull { it.key.contains(moodKey) || moodKey.contains(it.key) }?.value
+
+                if (!matchedParam.isNullOrBlank()) {
+                    homeRepository.getMoodData(matchedParam).collect { res ->
+                        if (res is Resource.Success && res.data != null) {
+                            val tracks = res.data!!.items
+                                .flatMap { it.contents }
+                                .map { it.toTrack() }
+                                .filter { it.videoId.isNotBlank() }
+                            if (tracks.isNotEmpty()) {
+                                _moodTracks.value = tracks
+                                loaded = true
+                            }
+                        }
+                    }
+                }
+
+                // 2. High-reliability fallback: search for top tracks matching the mood
+                if (!loaded) {
+                    val searchQuery = when (moodKey) {
+                        "all" -> "top trending hits songs"
+                        "sad" -> "sad emotional songs"
+                        "sleep" -> "sleep calming ambient relaxing music"
+                        "road trip" -> "road trip driving anthems songs"
+                        "study" -> "lofi study instrumental beats"
+                        "trending" -> "trending viral hits songs"
+                        "workout" -> "workout motivation gym songs"
+                        "chill" -> "chill relaxing vibes songs"
+                        "focus" -> "deep focus instrumental music"
+                        "party" -> "party dance hits songs"
+                        else -> "$cleanMood songs"
+                    }
+                    searchRepository.getSearchDataSong(searchQuery).collect { res ->
+                        if (res is Resource.Success && !res.data.isNullOrEmpty()) {
+                            _moodTracks.value = res.data!!.map { it.toTrack() }
+                            loaded = true
+                        }
                     }
                 }
             } catch (e: Exception) {
@@ -835,8 +961,14 @@ class SkimViewModel(
     fun setSleepTimer(minutes: Int) {
         if (minutes > 0) {
             mediaPlayerHandler.sleepStart(minutes)
+            _sponsorBlockToast.value = if (minutes == Int.MAX_VALUE) {
+                "⏰ Sleep timer set for end of current song"
+            } else {
+                "⏰ Sleep timer set for $minutes minutes"
+            }
         } else {
             mediaPlayerHandler.sleepStop()
+            _sponsorBlockToast.value = "⏰ Sleep timer turned off"
         }
     }
 

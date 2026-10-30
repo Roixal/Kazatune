@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.kazatune.updater.SemanticVersionTest" tests="4" skipped="0" failures="0" errors="0" timestamp="2026-10-30T12:11:24.243Z" hostname="Krishs-MacBook-Pro.local" time="0.029">
+  <properties/>
+  <testcase name="testVersionComparison" classname="com.kazatune.updater.SemanticVersionTest" time="0.015"/>
+  <testcase name="testParseStandardVersion" classname="com.kazatune.updater.SemanticVersionTest" time="0.007"/>
+  <testcase name="testPrereleaseComparison" classname="com.kazatune.updater.SemanticVersionTest" time="0.0"/>
+  <testcase name="testParseReleaseTitleWithPrefix" classname="com.kazatune.updater.SemanticVersionTest" time="0.001"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

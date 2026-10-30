@@ -267,7 +267,7 @@ fun LyricShareDialog(
             // Share Action Button
             Button(
                 onClick = {
-                    val shareText = "\"$selectedText\"\n\n— ${track.title} on Skim Music\nhttps://music.youtube.com/watch?v=${track.videoId}"
+                    val shareText = "\"$selectedText\"\n\n— ${track.title} on Skim Music\nDownload Skim: https://github.com/Roixal/Kazatune/releases/tag/Stable"
                     val shareIntent = Intent(Intent.ACTION_SEND).apply {
                         type = "text/plain"
                         putExtra(Intent.EXTRA_TEXT, shareText)

@@ -53,6 +53,7 @@ int string widget_recently_added 0x0
 int string widget_turntable_description 0x0
 int string widget_turntable_label 0x0
 int style Theme_Kazatune 0x0
+int xml file_paths 0x0
 int xml insights_widget_info 0x0
 int xml playlists_widget_info 0x0
 int xml turntable_widget_info 0x0

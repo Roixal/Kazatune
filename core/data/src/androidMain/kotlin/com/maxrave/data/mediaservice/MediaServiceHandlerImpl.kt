@@ -1283,6 +1283,8 @@ internal class MediaServiceHandlerImpl(
 
     override fun sleepStop() {
         sleepTimerJob?.cancel()
+        sleepTimerJob = null
+        player.sleepFadeFactor = 1f
         _sleepTimerState.value = SleepTimerState(false, 0)
     }
 

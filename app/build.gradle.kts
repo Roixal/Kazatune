@@ -76,6 +76,12 @@ dependencies {
     implementation(libs.androidx.lifecycle.runtimeCompose)
     implementation(libs.androidx.lifecycle.viewmodelCompose)
 
+    // Networking
+    implementation(libs.okhttp3.okhttp)
+
+    // Testing
+    testImplementation(libs.junit)
+
     // Image loading (Spotify canvas fallback & album art)
     implementation(libs.coil.compose)
     implementation(libs.coil.network.okhttp)
