@@ -152,6 +152,7 @@ MERGED from [androidx.activity:activity-compose:1.13.0] /Users/krixh.../.gradle/
 MERGED from [androidx.customview:customview-poolingcontainer:1.0.0] /Users/krixh.../.gradle/caches/9.8.1/transforms/3b1899d02b70551f5856db80508bd5f6/transformed/customview-poolingcontainer-1.0.0/AndroidManifest.xml:17:1-23:12
 MERGED from [androidx.graphics:graphics-shapes-android:1.0.1] /Users/krixh.../.gradle/caches/9.8.1/transforms/9047d38a74beac6c797d21d95af7409e/transformed/graphics-shapes-release/AndroidManifest.xml:2:1-7:12
 MERGED from [androidx.core:core-ktx:1.19.1] /Users/krixh.../.gradle/caches/9.8.1/transforms/73c89d0dcfee3a2e7293d941c62a9185/transformed/core-ktx-1.19.1/AndroidManifest.xml:2:1-7:12
+MERGED from [com.github.aptabase:aptabase-kotlin:0.1.0] /Users/krixh.../.gradle/caches/9.8.1/transforms/ee8c591bf5dc0a0763926af80715bda8/transformed/aptabase-kotlin-0.1.0/AndroidManifest.xml:2:1-9:12
 MERGED from [androidx.room:room-runtime-android:2.8.5] /Users/krixh.../.gradle/caches/9.8.1/transforms/035d7b122fd4d517ae3a75df7d0c1500/transformed/room-runtime/AndroidManifest.xml:17:1-31:12
 MERGED from [androidx.room:room-ktx:2.8.5] /Users/krixh.../.gradle/caches/9.8.1/transforms/f1db3663e71639224658357a9b0855b4/transformed/room-ktx-2.8.5/AndroidManifest.xml:17:1-22:12
 MERGED from [androidx.paging:paging-common-android:3.5.3] /Users/krixh.../.gradle/caches/9.8.1/transforms/26e36fba2cc1a7d24dbf8dc9bc5d0cde/transformed/paging-common/AndroidManifest.xml:2:1-7:12
@@ -163,6 +164,7 @@ MERGED from [co.touchlab:kermit-io-android:2.2.0] /Users/krixh.../.gradle/caches
 MERGED from [:ktorExt] /Users/krixh.../Desktop/Skim/core/service/ktorExt/build/intermediates/merged_manifest/androidMain/processAndroidMainManifest/AndroidManifest.xml:2:1-7:12
 MERGED from [io.github.dokar3:quickjs-kt-android:1.0.15] /Users/krixh.../.gradle/caches/9.8.1/transforms/3389c9ab35e0956b4fffa8d522d6deee/transformed/quickjs-release/AndroidManifest.xml:2:1-7:12
 MERGED from [androidx.profileinstaller:profileinstaller:1.4.1] /Users/krixh.../.gradle/caches/9.8.1/transforms/06d7c4e39becd20c7be363ea0a6a39ab/transformed/profileinstaller-1.4.1/AndroidManifest.xml:17:1-55:12
+MERGED from [androidx.test:monitor:1.6.1] /Users/krixh.../.gradle/caches/9.8.1/transforms/d5b925a92589923527dfca28cb322d2f/transformed/monitor-1.6.1/AndroidManifest.xml:17:1-24:12
 MERGED from [com.squareup.okhttp3:okhttp-android:5.5.1] /Users/krixh.../.gradle/caches/9.8.1/transforms/fe2a60c5c2aa521118c1430393f00020/transformed/okhttp/AndroidManifest.xml:2:1-22:12
 MERGED from [androidx.startup:startup-runtime:1.2.0] /Users/krixh.../.gradle/caches/9.8.1/transforms/8721c6fb66a83c84c786a3fec0969a80/transformed/startup-runtime-1.2.0/AndroidManifest.xml:17:1-31:12
 MERGED from [androidx.tracing:tracing-ktx:2.0.1] /Users/krixh.../.gradle/caches/9.8.1/transforms/71e365076131037e5cb2b60c7f9f45d6/transformed/tracing-ktx-2.0.1/AndroidManifest.xml:17:1-22:12
@@ -173,6 +175,7 @@ MERGED from [androidx.sqlite:sqlite-android:2.7.1] /Users/krixh.../.gradle/cache
 MERGED from [androidx.sqlite:sqlite-bundled-android:2.7.1] /Users/krixh.../.gradle/caches/9.8.1/transforms/d65310b482d78be4427d450556ad7187/transformed/sqlite-bundled/AndroidManifest.xml:2:1-7:12
 MERGED from [co.touchlab:kermit-android:2.2.0] /Users/krixh.../.gradle/caches/9.8.1/transforms/bed590671a1d8e1216fa128cb19be639/transformed/kermit/AndroidManifest.xml:2:1-7:12
 MERGED from [androidx.core:core-viewtree:1.0.0] /Users/krixh.../.gradle/caches/9.8.1/transforms/805bd131ce3bc4f3646252c8124b6d3a/transformed/core-viewtree-1.0.0/AndroidManifest.xml:2:1-7:12
+MERGED from [androidx.test:annotation:1.0.1] /Users/krixh.../.gradle/caches/9.8.1/transforms/e6ee4970d4f7f381c670d1629633269e/transformed/annotation-1.0.1/AndroidManifest.xml:17:1-24:12
 MERGED from [androidx.annotation:annotation-experimental:1.5.0] /Users/krixh.../.gradle/caches/9.8.1/transforms/78a556521966afa606bd357fbd9891b5/transformed/annotation-experimental-1.5.0/AndroidManifest.xml:2:1-7:12
 MERGED from [androidx.cursoradapter:cursoradapter:1.0.0] /Users/krixh.../.gradle/caches/9.8.1/transforms/6c6bbe791c953bf856b20e63d2501d3a/transformed/cursoradapter-1.0.0/AndroidManifest.xml:17:1-22:12
 MERGED from [androidx.cardview:cardview:1.0.0] /Users/krixh.../.gradle/caches/9.8.1/transforms/2af57574febda1539c465ed7f8fe727e/transformed/cardview-1.0.0/AndroidManifest.xml:17:1-22:12
@@ -194,6 +197,8 @@ MERGED from [io.github.maxrave-dev:ffmpeg-kit-audio:6.0.1] /Users/krixh.../.grad
 		ADDED from /Users/krixh.../Desktop/Skim/app/src/main/AndroidManifest.xml:2:11-69
 uses-permission#android.permission.INTERNET
 ADDED from /Users/krixh.../Desktop/Skim/app/src/main/AndroidManifest.xml:5:5-67
+MERGED from [com.github.aptabase:aptabase-kotlin:0.1.0] /Users/krixh.../.gradle/caches/9.8.1/transforms/ee8c591bf5dc0a0763926af80715bda8/transformed/aptabase-kotlin-0.1.0/AndroidManifest.xml:7:5-67
+MERGED from [com.github.aptabase:aptabase-kotlin:0.1.0] /Users/krixh.../.gradle/caches/9.8.1/transforms/ee8c591bf5dc0a0763926af80715bda8/transformed/aptabase-kotlin-0.1.0/AndroidManifest.xml:7:5-67
 MERGED from [com.squareup.okhttp3:okhttp-android:5.5.1] /Users/krixh.../.gradle/caches/9.8.1/transforms/fe2a60c5c2aa521118c1430393f00020/transformed/okhttp/AndroidManifest.xml:8:5-67
 MERGED from [com.squareup.okhttp3:okhttp-android:5.5.1] /Users/krixh.../.gradle/caches/9.8.1/transforms/fe2a60c5c2aa521118c1430393f00020/transformed/okhttp/AndroidManifest.xml:8:5-67
 	android:name
@@ -723,6 +728,8 @@ MERGED from [androidx.graphics:graphics-shapes-android:1.0.1] /Users/krixh.../.g
 MERGED from [androidx.graphics:graphics-shapes-android:1.0.1] /Users/krixh.../.gradle/caches/9.8.1/transforms/9047d38a74beac6c797d21d95af7409e/transformed/graphics-shapes-release/AndroidManifest.xml:5:5-44
 MERGED from [androidx.core:core-ktx:1.19.1] /Users/krixh.../.gradle/caches/9.8.1/transforms/73c89d0dcfee3a2e7293d941c62a9185/transformed/core-ktx-1.19.1/AndroidManifest.xml:5:5-44
 MERGED from [androidx.core:core-ktx:1.19.1] /Users/krixh.../.gradle/caches/9.8.1/transforms/73c89d0dcfee3a2e7293d941c62a9185/transformed/core-ktx-1.19.1/AndroidManifest.xml:5:5-44
+MERGED from [com.github.aptabase:aptabase-kotlin:0.1.0] /Users/krixh.../.gradle/caches/9.8.1/transforms/ee8c591bf5dc0a0763926af80715bda8/transformed/aptabase-kotlin-0.1.0/AndroidManifest.xml:5:5-44
+MERGED from [com.github.aptabase:aptabase-kotlin:0.1.0] /Users/krixh.../.gradle/caches/9.8.1/transforms/ee8c591bf5dc0a0763926af80715bda8/transformed/aptabase-kotlin-0.1.0/AndroidManifest.xml:5:5-44
 MERGED from [androidx.room:room-runtime-android:2.8.5] /Users/krixh.../.gradle/caches/9.8.1/transforms/035d7b122fd4d517ae3a75df7d0c1500/transformed/room-runtime/AndroidManifest.xml:21:5-44
 MERGED from [androidx.room:room-runtime-android:2.8.5] /Users/krixh.../.gradle/caches/9.8.1/transforms/035d7b122fd4d517ae3a75df7d0c1500/transformed/room-runtime/AndroidManifest.xml:21:5-44
 MERGED from [androidx.room:room-ktx:2.8.5] /Users/krixh.../.gradle/caches/9.8.1/transforms/f1db3663e71639224658357a9b0855b4/transformed/room-ktx-2.8.5/AndroidManifest.xml:20:5-44
@@ -745,6 +752,8 @@ MERGED from [io.github.dokar3:quickjs-kt-android:1.0.15] /Users/krixh.../.gradle
 MERGED from [io.github.dokar3:quickjs-kt-android:1.0.15] /Users/krixh.../.gradle/caches/9.8.1/transforms/3389c9ab35e0956b4fffa8d522d6deee/transformed/quickjs-release/AndroidManifest.xml:5:5-44
 MERGED from [androidx.profileinstaller:profileinstaller:1.4.1] /Users/krixh.../.gradle/caches/9.8.1/transforms/06d7c4e39becd20c7be363ea0a6a39ab/transformed/profileinstaller-1.4.1/AndroidManifest.xml:21:5-44
 MERGED from [androidx.profileinstaller:profileinstaller:1.4.1] /Users/krixh.../.gradle/caches/9.8.1/transforms/06d7c4e39becd20c7be363ea0a6a39ab/transformed/profileinstaller-1.4.1/AndroidManifest.xml:21:5-44
+MERGED from [androidx.test:monitor:1.6.1] /Users/krixh.../.gradle/caches/9.8.1/transforms/d5b925a92589923527dfca28cb322d2f/transformed/monitor-1.6.1/AndroidManifest.xml:20:5-22:41
+MERGED from [androidx.test:monitor:1.6.1] /Users/krixh.../.gradle/caches/9.8.1/transforms/d5b925a92589923527dfca28cb322d2f/transformed/monitor-1.6.1/AndroidManifest.xml:20:5-22:41
 MERGED from [com.squareup.okhttp3:okhttp-android:5.5.1] /Users/krixh.../.gradle/caches/9.8.1/transforms/fe2a60c5c2aa521118c1430393f00020/transformed/okhttp/AndroidManifest.xml:6:5-44
 MERGED from [com.squareup.okhttp3:okhttp-android:5.5.1] /Users/krixh.../.gradle/caches/9.8.1/transforms/fe2a60c5c2aa521118c1430393f00020/transformed/okhttp/AndroidManifest.xml:6:5-44
 MERGED from [androidx.startup:startup-runtime:1.2.0] /Users/krixh.../.gradle/caches/9.8.1/transforms/8721c6fb66a83c84c786a3fec0969a80/transformed/startup-runtime-1.2.0/AndroidManifest.xml:21:5-44
@@ -765,6 +774,8 @@ MERGED from [co.touchlab:kermit-android:2.2.0] /Users/krixh.../.gradle/caches/9.
 MERGED from [co.touchlab:kermit-android:2.2.0] /Users/krixh.../.gradle/caches/9.8.1/transforms/bed590671a1d8e1216fa128cb19be639/transformed/kermit/AndroidManifest.xml:5:5-44
 MERGED from [androidx.core:core-viewtree:1.0.0] /Users/krixh.../.gradle/caches/9.8.1/transforms/805bd131ce3bc4f3646252c8124b6d3a/transformed/core-viewtree-1.0.0/AndroidManifest.xml:5:5-44
 MERGED from [androidx.core:core-viewtree:1.0.0] /Users/krixh.../.gradle/caches/9.8.1/transforms/805bd131ce3bc4f3646252c8124b6d3a/transformed/core-viewtree-1.0.0/AndroidManifest.xml:5:5-44
+MERGED from [androidx.test:annotation:1.0.1] /Users/krixh.../.gradle/caches/9.8.1/transforms/e6ee4970d4f7f381c670d1629633269e/transformed/annotation-1.0.1/AndroidManifest.xml:20:5-22:41
+MERGED from [androidx.test:annotation:1.0.1] /Users/krixh.../.gradle/caches/9.8.1/transforms/e6ee4970d4f7f381c670d1629633269e/transformed/annotation-1.0.1/AndroidManifest.xml:20:5-22:41
 MERGED from [androidx.annotation:annotation-experimental:1.5.0] /Users/krixh.../.gradle/caches/9.8.1/transforms/78a556521966afa606bd357fbd9891b5/transformed/annotation-experimental-1.5.0/AndroidManifest.xml:5:5-44
 MERGED from [androidx.annotation:annotation-experimental:1.5.0] /Users/krixh.../.gradle/caches/9.8.1/transforms/78a556521966afa606bd357fbd9891b5/transformed/annotation-experimental-1.5.0/AndroidManifest.xml:5:5-44
 MERGED from [androidx.cursoradapter:cursoradapter:1.0.0] /Users/krixh.../.gradle/caches/9.8.1/transforms/6c6bbe791c953bf856b20e63d2501d3a/transformed/cursoradapter-1.0.0/AndroidManifest.xml:20:5-44

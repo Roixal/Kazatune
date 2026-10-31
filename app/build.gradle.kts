@@ -88,6 +88,9 @@ dependencies {
 
     // Dependency Injection (Koin)
     implementation(libs.koin.android)
+
+    // Analytics (Privacy-friendly telemetry)
+    implementation("com.github.aptabase:aptabase-kotlin:0.1.0")
     implementation(libs.koin.androidx.compose)
 
     // Coroutines
