@@ -25,7 +25,7 @@ class SkimMusicApp : Application() {
 
         val identity = AppIdentity(
             applicationId = packageName,
-            versionName = "1.0.1",
+            versionName = "1.0.2",
             platform = "Android",
             isDevBuild = false
         )
