@@ -835,6 +835,9 @@ internal class CrossfadeExoPlayerAdapter(
             }
             if (hasNextMediaItem()) {
                 seekTo(getNextMediaItemIndex(), 0)
+            } else if (playlist.size > 1) {
+                // Wrap to beginning when at the end of playlist
+                seekTo(0, 0)
             } else if (wasCrossfading) {
                 // A+1 was the last track — stay on it (already promoted), just refresh metadata.
                 forwardingPlayer.notifyMediaItemChanged()

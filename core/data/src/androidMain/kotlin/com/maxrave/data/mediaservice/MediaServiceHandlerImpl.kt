@@ -943,9 +943,9 @@ internal class MediaServiceHandlerImpl(
                 _controlState.value = _controlState.value.copy(isLiked = liked)
                 onUpdateNotification.invoke(
                     listOf(
+                        GenericCommandButton.Repeat(repeatState = _controlState.value.repeatState),
                         GenericCommandButton.Like(liked),
                         GenericCommandButton.Shuffle(isShuffled = _controlState.value.isShuffle),
-                        GenericCommandButton.Repeat(repeatState = _controlState.value.repeatState),
                         GenericCommandButton.Radio,
                     ),
                 )
@@ -1047,12 +1047,39 @@ internal class MediaServiceHandlerImpl(
 
             PlayerEvent.Next -> {
                 resetCrossfade()
-                player.seekToNext()
+                if (player.hasNextMediaItem() && player.mediaItemCount > 1) {
+                    player.seekToNext()
+                } else {
+                    val tracks = _queueData.value.data.listTracks
+                    val currentId = player.currentMediaItem?.mediaId
+                    val currentIndex = tracks.indexOfFirst { it.videoId == currentId }
+                    if (currentIndex != -1 && currentIndex < tracks.size - 1) {
+                        val nextTrack = tracks[currentIndex + 1]
+                        addMediaItem(nextTrack.toGenericMediaItem(), playWhenReady = true)
+                    } else if (currentIndex != -1 && (_controlState.value.repeatState == RepeatState.All || tracks.size > 1) && tracks.isNotEmpty()) {
+                        val firstTrack = tracks[0]
+                        addMediaItem(firstTrack.toGenericMediaItem(), playWhenReady = true)
+                    } else {
+                        player.seekToNext()
+                    }
+                }
             }
 
             PlayerEvent.Previous -> {
                 resetCrossfade()
-                player.seekToPrevious()
+                if (player.hasPreviousMediaItem() && player.mediaItemCount > 1) {
+                    player.seekToPrevious()
+                } else {
+                    val tracks = _queueData.value.data.listTracks
+                    val currentId = player.currentMediaItem?.mediaId
+                    val currentIndex = tracks.indexOfFirst { it.videoId == currentId }
+                    if (currentIndex > 0) {
+                        val prevTrack = tracks[currentIndex - 1]
+                        addMediaItem(prevTrack.toGenericMediaItem(), playWhenReady = true)
+                    } else {
+                        player.seekTo(0)
+                    }
+                }
             }
 
             PlayerEvent.SkipToPrevious -> {
