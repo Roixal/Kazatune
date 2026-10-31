@@ -35,7 +35,8 @@ val appModule = module {
             streamRepository = get(),
             downloadHandler = get(),
             dataStoreManager = get(),
-            searchRepository = get()
+            searchRepository = get(),
+            localPlaylistRepository = get()
         )
     }
     viewModel {

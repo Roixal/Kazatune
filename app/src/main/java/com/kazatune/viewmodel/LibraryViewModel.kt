@@ -144,6 +144,17 @@ class LibraryViewModel(
         }
     }
 
+    fun createPlaylist(name: String) {
+        if (name.isBlank()) return
+        viewModelScope.launch(Dispatchers.IO) {
+            val newPlaylist = LocalPlaylistEntity(
+                title = name.trim(),
+                tracks = emptyList()
+            )
+            localPlaylistRepository.insertLocalPlaylist(newPlaylist, "Playlist created").collect { }
+        }
+    }
+
     fun playSong(song: SongEntity) {
         mediaPlayerHandler.clearMediaItems()
         mediaPlayerHandler.addMediaItem(song.toGenericMediaItem(), playWhenReady = true)

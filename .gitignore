@@ -1,0 +1,27 @@
+*.apk
+*.ap_
+*.aab
+*.dex
+*.class
+
+# Built application files
+app/build/
+build/
+**/build/
+.gradle/
+**/.gradle/
+.kotlin/
+**/.kotlin/
+
+# Android Studio / IntelliJ
+.idea/
+*.iml
+.navigation/
+captures/
+
+# OS generated
+.DS_Store
+Thumbs.db
+
+# Local configuration
+local.properties

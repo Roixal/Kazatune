@@ -28,6 +28,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.automirrored.filled.QueueMusic
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.DeleteOutline
@@ -52,6 +53,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import com.kazatune.ui.component.CreatePlaylistDialog
 import com.kazatune.ui.taste.TasteBottomSheet
 import com.kazatune.ui.theme.LiquidGlassCard
 import com.kazatune.ui.theme.LiquidGlassColors
@@ -96,6 +98,7 @@ fun LibraryScreen(
 
     var showTasteSheet by remember { mutableStateOf(false) }
     var showMigrationDialog by remember { mutableStateOf(false) }
+    var showCreatePlaylistDialog by remember { mutableStateOf(false) }
     var loadingYtPlaylistId by remember { mutableStateOf<String?>(null) }
     val tasteSheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
 
@@ -419,17 +422,50 @@ fun LibraryScreen(
 
                 // Local Playlists Section
                 if (selectedTab == LibraryTab.ALL || selectedTab == LibraryTab.PLAYLISTS) {
-                    if (localPlaylists.isNotEmpty()) {
-                        item {
+                    item {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(top = 8.dp, bottom = 4.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
                             Text(
-                                text = "Local Playlists",
+                                text = "Your Playlists",
                                 fontFamily = DinProFamily,
                                 fontSize = 18.sp,
                                 fontWeight = FontWeight.Bold,
-                                color = Color.White,
-                                modifier = Modifier.padding(top = 8.dp, bottom = 4.dp)
+                                color = Color.White
                             )
+                            Surface(
+                                shape = RoundedCornerShape(12.dp),
+                                color = Color(0x33FF0050),
+                                modifier = Modifier.clickable { showCreatePlaylistDialog = true }
+                            ) {
+                                Row(
+                                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Add,
+                                        contentDescription = "New Playlist",
+                                        tint = RessoAccent,
+                                        modifier = Modifier.size(16.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(4.dp))
+                                    Text(
+                                        text = "Create",
+                                        fontFamily = DinProFamily,
+                                        fontSize = 12.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = RessoAccent
+                                    )
+                                }
+                            }
                         }
+                    }
+
+                    if (localPlaylists.isNotEmpty()) {
                         items(localPlaylists) { playlist ->
                             PlaylistListItem(
                                 playlist = playlist,
@@ -442,13 +478,52 @@ fun LibraryScreen(
                                 }
                             )
                         }
-                    } else if (selectedTab == LibraryTab.PLAYLISTS && ytPlaylists.isEmpty()) {
+                    } else {
                         item {
-                            EmptyLibraryState(
-                                icon = Icons.AutoMirrored.Filled.QueueMusic,
-                                title = "No playlists found",
-                                subtitle = "Your custom playlists will appear here"
-                            )
+                            Surface(
+                                shape = RoundedCornerShape(14.dp),
+                                color = Color(0xFF181720),
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clickable { showCreatePlaylistDialog = true }
+                            ) {
+                                Row(
+                                    modifier = Modifier.padding(16.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Box(
+                                        modifier = Modifier
+                                            .size(44.dp)
+                                            .clip(RoundedCornerShape(10.dp))
+                                            .background(Color(0xFF22212B)),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.Add,
+                                            contentDescription = null,
+                                            tint = RessoAccent,
+                                            modifier = Modifier.size(24.dp)
+                                        )
+                                    }
+                                    Spacer(modifier = Modifier.width(14.dp))
+                                    Column {
+                                        Text(
+                                            text = "Create Your First Playlist",
+                                            fontFamily = DinProFamily,
+                                            fontSize = 15.sp,
+                                            fontWeight = FontWeight.SemiBold,
+                                            color = Color.White
+                                        )
+                                        Spacer(modifier = Modifier.height(2.dp))
+                                        Text(
+                                            text = "Tap here to start organizing your favorite songs",
+                                            fontFamily = DinProFamily,
+                                            fontSize = 12.sp,
+                                            color = Color(0x88FFFFFF)
+                                        )
+                                    }
+                                }
+                            }
                         }
                     }
                 }
@@ -507,6 +582,15 @@ fun LibraryScreen(
                 }
             }
         }
+    }
+
+    if (showCreatePlaylistDialog) {
+        CreatePlaylistDialog(
+            onDismissRequest = { showCreatePlaylistDialog = false },
+            onCreate = { name ->
+                libraryViewModel.createPlaylist(name)
+            }
+        )
     }
 
     if (showTasteSheet) {
