@@ -1,6 +1,7 @@
 package com.kazatune
 
 import android.app.Application
+import com.aptabase.Aptabase
 import com.kazatune.di.appModule
 import com.maxrave.common.AppIdentity
 import com.maxrave.data.di.loader.loadAllModules
@@ -13,6 +14,14 @@ class SkimMusicApp : Application() {
 
     override fun onCreate() {
         super.onCreate()
+
+        // Privacy-friendly telemetry via Aptabase
+        try {
+            Aptabase.instance.initialize(this, "A-EU-6636938585")
+            Aptabase.instance.trackEvent("app_started")
+        } catch (_: Exception) {
+            // Analytics should never crash the app
+        }
 
         val identity = AppIdentity(
             applicationId = packageName,
