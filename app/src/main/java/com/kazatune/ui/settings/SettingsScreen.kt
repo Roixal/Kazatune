@@ -1,5 +1,7 @@
 package com.kazatune.ui.settings
 
+import com.kazatune.ui.component.SleepTimerBottomSheet
+
 import android.content.Intent
 import android.net.Uri
 import android.view.ViewGroup
@@ -106,6 +108,15 @@ fun SettingsScreen(
     val context = LocalContext.current
 
     var showAboutScreen by remember { mutableStateOf(false) }
+    var showSleepTimerSheet by remember { mutableStateOf(false) }
+
+    if (showSleepTimerSheet) {
+        SleepTimerBottomSheet(
+            timeRemainingMinutes = sleepTimerState.timeRemaining,
+            onSetTimer = { mins -> settingsViewModel.setSleepTimer(mins) },
+            onDismissRequest = { showSleepTimerSheet = false }
+        )
+    }
 
     if (showAboutScreen) {
         AboutScreen(
@@ -470,6 +481,22 @@ fun SettingsScreen(
                                 ) {
                                     Text(
                                         text = "${min}m",
+                                        fontFamily = DinProFamily,
+                                        fontSize = 12.sp,
+                                        fontWeight = FontWeight.Medium,
+                                        color = Color.White,
+                                        modifier = Modifier.padding(horizontal = 14.dp, vertical = 6.dp)
+                                    )
+                                }
+                            }
+                            item {
+                                Surface(
+                                    shape = RoundedCornerShape(14.dp),
+                                    color = Color(0xFF252430),
+                                    modifier = Modifier.clickable { showSleepTimerSheet = true }
+                                ) {
+                                    Text(
+                                        text = "Custom...",
                                         fontFamily = DinProFamily,
                                         fontSize = 12.sp,
                                         fontWeight = FontWeight.Medium,
