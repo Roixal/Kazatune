@@ -1,5 +1,12 @@
 package com.kazatune.viewmodel
 
+import com.maxrave.domain.data.entities.LocalPlaylistEntity
+import com.maxrave.domain.mediaservice.handler.RepeatState
+import com.maxrave.domain.repository.LocalPlaylistRepository
+import com.maxrave.domain.utils.LocalResource
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.stateIn
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.maxrave.domain.data.entities.DownloadState
@@ -63,7 +70,8 @@ class SkimViewModel(
     private val streamRepository: StreamRepository,
     private val downloadHandler: DownloadHandler,
     private val dataStoreManager: DataStoreManager,
-    private val searchRepository: SearchRepository
+    private val searchRepository: SearchRepository,
+    private val localPlaylistRepository: LocalPlaylistRepository
 ) : ViewModel() {
 
     private val _skimTab = MutableStateFlow(SkimTab.FOR_YOU)
@@ -78,6 +86,112 @@ class SkimViewModel(
     val nowPlaying: StateFlow<NowPlayingTrackState> = mediaPlayerHandler.nowPlayingState
     val mediaState: StateFlow<SimpleMediaState> = mediaPlayerHandler.simpleMediaState
     val controlState = mediaPlayerHandler.controlState
+
+    val repeatState: StateFlow<RepeatState> = mediaPlayerHandler.controlState
+        .map { it.repeatState }
+        .stateIn(viewModelScope, SharingStarted.Lazily, RepeatState.None)
+
+    fun toggleRepeat() {
+        viewModelScope.launch {
+            mediaPlayerHandler.onPlayerEvent(PlayerEvent.Repeat)
+        }
+    }
+
+    val localPlaylists: StateFlow<List<LocalPlaylistEntity>> = localPlaylistRepository.getAllLocalPlaylists()
+        .stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
+
+    fun createPlaylist(name: String, onCreated: ((LocalPlaylistEntity) -> Unit)? = null) {
+        if (name.isBlank()) return
+        viewModelScope.launch(Dispatchers.IO) {
+            val newPlaylist = LocalPlaylistEntity(
+                title = name.trim(),
+                tracks = emptyList()
+            )
+            localPlaylistRepository.insertLocalPlaylist(newPlaylist, "Playlist created").collect { res ->
+                if (res is LocalResource.Success) {
+                    val created = localPlaylistRepository.getAllLocalPlaylists().first().firstOrNull { it.title == name.trim() }
+                    if (created != null && onCreated != null) {
+                        withContext(Dispatchers.Main) {
+                            onCreated(created)
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    fun addTrackToPlaylist(track: Track, playlist: LocalPlaylistEntity, onResult: (Boolean, String) -> Unit) {
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                val songEntity = track.toSongEntity()
+                localPlaylistRepository.addTrackToLocalPlaylist(
+                    id = playlist.id,
+                    song = songEntity,
+                    successMessage = "Added to \"${playlist.title}\"",
+                    updatedYtMessage = "",
+                    errorMessage = "Failed to add song"
+                ).collect { res ->
+                    when (res) {
+                        is LocalResource.Success -> {
+                            withContext(Dispatchers.Main) {
+                                onResult(true, "Added to \"${playlist.title}\"")
+                            }
+                        }
+                        is LocalResource.Error -> {
+                            withContext(Dispatchers.Main) {
+                                onResult(false, res.message ?: "Failed to add song")
+                            }
+                        }
+                        else -> {}
+                    }
+                }
+            } catch (e: Exception) {
+                withContext(Dispatchers.Main) {
+                    onResult(false, e.message ?: "Error adding to playlist")
+                }
+            }
+        }
+    }
+
+    fun createPlaylistAndAddTrack(name: String, track: Track, onResult: (Boolean, String) -> Unit) {
+        if (name.isBlank()) return
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                val songEntity = track.toSongEntity()
+                val newPlaylist = LocalPlaylistEntity(
+                    title = name.trim(),
+                    tracks = listOf(track.videoId)
+                )
+                localPlaylistRepository.insertLocalPlaylist(newPlaylist, "Playlist created").collect { res ->
+                    if (res is LocalResource.Success) {
+                        val created = localPlaylistRepository.getAllLocalPlaylists().first().firstOrNull { it.title == name.trim() }
+                        if (created != null) {
+                            localPlaylistRepository.addTrackToLocalPlaylist(
+                                id = created.id,
+                                song = songEntity,
+                                successMessage = "Added to \"${created.title}\"",
+                                updatedYtMessage = "",
+                                errorMessage = "Failed to add"
+                            ).collect {
+                                withContext(Dispatchers.Main) {
+                                    onResult(true, "Created & added to \"${created.title}\"")
+                                }
+                            }
+                        } else {
+                            withContext(Dispatchers.Main) {
+                                onResult(true, "Created & added to \"$name\"")
+                            }
+                        }
+                    }
+                }
+            } catch (e: Exception) {
+                withContext(Dispatchers.Main) {
+                    onResult(false, e.message ?: "Error creating playlist")
+                }
+            }
+        }
+    }
+
 
     private val _currentPositionMs = MutableStateFlow(0L)
     val currentPositionMs: StateFlow<Long> = _currentPositionMs.asStateFlow()

@@ -112,13 +112,6 @@ internal class SimpleMediaService :
                 )
         }
 
-        simpleMediaServiceHandler.onUpdateNotification = { list ->
-            val commandButtonList = list.map { it.toCommandButton(this) }
-            mediaSession?.setMediaButtonPreferences(
-                commandButtonList,
-            )
-        }
-
         val sessionToken = SessionToken(this, ComponentName(this, SimpleMediaService::class.java))
         val controllerFuture = MediaController.Builder(this, sessionToken).buildAsync()
         controllerFuture.addListener({ controllerFuture.get() }, MoreExecutors.directExecutor())
@@ -126,6 +119,9 @@ internal class SimpleMediaService :
         simpleMediaServiceHandler.onUpdateNotification = { list ->
             val commandButtonList = list.map { it.toCommandButton(this) }
             mediaSession?.setMediaButtonPreferences(
+                commandButtonList,
+            )
+            mediaSession?.setCustomLayout(
                 commandButtonList,
             )
         }

@@ -171,6 +171,14 @@ fun GenericCommandButton.toCommandButton(context: Context): CommandButton =
 
                         else -> CommandButton.ICON_REPEAT_OFF
                     },
+                ).setCustomIconResId(
+                    when (repeatMode) {
+                        RepeatState.One -> R.drawable.baseline_repeat_one_24
+
+                        RepeatState.All -> R.drawable.baseline_repeat_all_24
+
+                        else -> R.drawable.baseline_repeat_24
+                    },
                 ).setDisplayName(
                     when (repeatMode) {
                         RepeatState.One -> context.getString(R.string.repeat_one)

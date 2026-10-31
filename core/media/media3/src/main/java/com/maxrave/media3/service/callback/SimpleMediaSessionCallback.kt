@@ -12,7 +12,9 @@ import androidx.media3.common.MediaMetadata
 import androidx.media3.common.Player
 import androidx.media3.common.Player.COMMAND_GET_TIMELINE
 import androidx.media3.common.Player.COMMAND_SEEK_TO_NEXT
+import androidx.media3.common.Player.COMMAND_SEEK_TO_NEXT_MEDIA_ITEM
 import androidx.media3.common.Player.COMMAND_SEEK_TO_PREVIOUS
+import androidx.media3.common.Player.COMMAND_SEEK_TO_PREVIOUS_MEDIA_ITEM
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.session.LibraryResult
@@ -115,16 +117,20 @@ internal class SimpleMediaSessionCallback(
         playerCommand: Int,
     ): Int {
         Logger.w(TAG, "Player Command $playerCommand")
-        scope.launch {
-            when (playerCommand) {
-                COMMAND_SEEK_TO_NEXT -> {
+        when (playerCommand) {
+            COMMAND_SEEK_TO_NEXT, COMMAND_SEEK_TO_NEXT_MEDIA_ITEM -> {
+                scope.launch {
                     mediaPlayerHandler.onPlayerEvent(PlayerEvent.Next)
                 }
-                COMMAND_SEEK_TO_PREVIOUS -> {
+                return SessionResult.RESULT_INFO_SKIPPED
+            }
+            COMMAND_SEEK_TO_PREVIOUS, COMMAND_SEEK_TO_PREVIOUS_MEDIA_ITEM -> {
+                scope.launch {
                     mediaPlayerHandler.onPlayerEvent(PlayerEvent.Previous)
                 }
-                COMMAND_GET_TIMELINE -> {
-                }
+                return SessionResult.RESULT_INFO_SKIPPED
+            }
+            COMMAND_GET_TIMELINE -> {
             }
         }
         return super.onPlayerCommandRequest(session, controller, playerCommand)
@@ -143,13 +149,9 @@ internal class SimpleMediaSessionCallback(
             }
 
             MEDIA_CUSTOM_COMMAND.REPEAT -> {
-                session.player.repeatMode =
-                    when (session.player.repeatMode) {
-                        ExoPlayer.REPEAT_MODE_OFF -> ExoPlayer.REPEAT_MODE_ONE
-                        ExoPlayer.REPEAT_MODE_ONE -> ExoPlayer.REPEAT_MODE_ALL
-                        ExoPlayer.REPEAT_MODE_ALL -> ExoPlayer.REPEAT_MODE_OFF
-                        else -> ExoPlayer.REPEAT_MODE_OFF
-                    }
+                scope.launch {
+                    mediaPlayerHandler.onPlayerEvent(PlayerEvent.Repeat)
+                }
             }
 
             MEDIA_CUSTOM_COMMAND.RADIO -> {

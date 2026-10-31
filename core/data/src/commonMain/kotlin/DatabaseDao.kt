@@ -216,6 +216,9 @@ interface DatabaseDao {
     @Query("DELETE FROM search_history")
     suspend fun deleteSearchHistory()
 
+    @Query("DELETE FROM search_history WHERE `query` = :query")
+    suspend fun deleteSearchHistoryItem(query: String)
+
     @Insert(onConflict = OnConflictStrategy.Companion.REPLACE)
     suspend fun insertSearchHistory(searchHistory: SearchHistory): Long
 

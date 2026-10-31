@@ -1,5 +1,14 @@
 package com.kazatune.ui.skim
 
+import android.widget.Toast
+import androidx.compose.material.icons.automirrored.filled.PlaylistAdd
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Repeat
+import androidx.compose.material.icons.filled.RepeatOne
+import com.kazatune.ui.component.AddToPlaylistBottomSheet
+import com.kazatune.ui.component.CreatePlaylistDialog
+import com.kazatune.ui.component.SleepTimerBottomSheet
+import com.maxrave.domain.mediaservice.handler.RepeatState
 import android.content.Intent
 import android.content.res.Configuration
 import androidx.compose.animation.AnimatedVisibility
@@ -160,6 +169,12 @@ fun SkimScreen(
     val lyricsOffsetMs by skimViewModel.lyricsOffsetMs.collectAsStateWithLifecycle()
     val isRefreshing by skimViewModel.isRefreshing.collectAsStateWithLifecycle()
     val sleepTimerState by skimViewModel.sleepTimerState.collectAsStateWithLifecycle()
+    val repeatState by skimViewModel.repeatState.collectAsStateWithLifecycle()
+    val localPlaylists by skimViewModel.localPlaylists.collectAsStateWithLifecycle()
+
+    var showSleepTimerSheet by remember { mutableStateOf(false) }
+    var showAddToPlaylistSheet by remember { mutableStateOf(false) }
+    var showCreatePlaylistDialog by remember { mutableStateOf(false) }
 
     val infiniteTransition = rememberInfiniteTransition(label = "RefreshRotation")
     val refreshRotation by infiniteTransition.animateFloat(
@@ -338,6 +353,8 @@ fun SkimScreen(
                             showCommentsSheet = true
                         },
                         onQueueClick = { showQueueSheet = true },
+                        repeatState = repeatState,
+                        onToggleRepeat = { skimViewModel.toggleRepeat() },
                         onSeek = { positionMs -> skimViewModel.seekTo(positionMs) },
                         onReload = { skimViewModel.reloadTrack(track) }
                     )
@@ -701,19 +718,46 @@ fun SkimScreen(
                     Text("Share Lyric Quote Card", fontFamily = DinProFamily, fontSize = 15.sp, color = Color.White)
                 }
 
-                // Sleep Timer
-                val sleepRemaining = sleepTimerState.timeRemaining
-                val isSleepTimerActive = sleepRemaining > 0 || sleepRemaining == -1
+                // Add to Playlist
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
                         .clickable {
-                            if (isSleepTimerActive) {
-                                skimViewModel.setSleepTimer(0)
-                            } else {
-                                skimViewModel.setSleepTimer(30)
-                            }
                             showMoreMenuSheet = false
+                            showAddToPlaylistSheet = true
+                        }
+                        .padding(vertical = 12.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(Icons.AutoMirrored.Filled.PlaylistAdd, null, tint = RessoAccent, modifier = Modifier.size(22.dp))
+                    Spacer(modifier = Modifier.width(16.dp))
+                    Text("Add to Playlist", fontFamily = DinProFamily, fontSize = 15.sp, color = Color.White)
+                }
+
+                // Create Playlist
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable {
+                            showMoreMenuSheet = false
+                            showCreatePlaylistDialog = true
+                        }
+                        .padding(vertical = 12.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(Icons.Default.Add, null, tint = Color.White, modifier = Modifier.size(22.dp))
+                    Spacer(modifier = Modifier.width(16.dp))
+                    Text("Create Playlist", fontFamily = DinProFamily, fontSize = 15.sp, color = Color.White)
+                }
+
+                // Sleep Timer (Full Feature Dialog with Custom Time)
+                val sleepRemaining = sleepTimerState.timeRemaining
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable {
+                            showMoreMenuSheet = false
+                            showSleepTimerSheet = true
                         }
                         .padding(vertical = 12.dp),
                     verticalAlignment = Alignment.CenterVertically
@@ -722,9 +766,9 @@ fun SkimScreen(
                     Spacer(modifier = Modifier.width(16.dp))
                     Text(
                         text = when {
-                            sleepRemaining == -1 -> "Sleep Timer: End of song (Tap to stop)"
-                            sleepRemaining > 0 -> "Sleep Timer: ${sleepRemaining}m left (Tap to stop)"
-                            else -> "Sleep Timer (30 min)"
+                            sleepRemaining == -1 -> "Sleep Timer: End of song"
+                            sleepRemaining > 0 -> "Sleep Timer: ${sleepRemaining}m remaining"
+                            else -> "Sleep Timer"
                         },
                         fontFamily = DinProFamily,
                         fontSize = 15.sp,
@@ -769,6 +813,48 @@ fun SkimScreen(
             onDismissRequest = { showLyricShareDialog = false }
         )
     }
+
+    // Sleep Timer Full Bottom Sheet
+    if (showSleepTimerSheet) {
+        val sleepRemaining = sleepTimerState.timeRemaining
+        SleepTimerBottomSheet(
+            timeRemainingMinutes = sleepRemaining,
+            onSetTimer = { mins -> skimViewModel.setSleepTimer(mins) },
+            onDismissRequest = { showSleepTimerSheet = false }
+        )
+    }
+
+    // Add to Playlist Bottom Sheet
+    if (showAddToPlaylistSheet && currentTrack != null) {
+        AddToPlaylistBottomSheet(
+            track = currentTrack,
+            playlists = localPlaylists,
+            onSelectPlaylist = { pl ->
+                skimViewModel.addTrackToPlaylist(currentTrack, pl) { success, msg ->
+                    Toast.makeText(context, msg, Toast.LENGTH_SHORT).show()
+                }
+            },
+            onCreateAndAdd = { name ->
+                skimViewModel.createPlaylistAndAddTrack(name, currentTrack) { success, msg ->
+                    Toast.makeText(context, msg, Toast.LENGTH_SHORT).show()
+                }
+            },
+            onDismissRequest = { showAddToPlaylistSheet = false }
+        )
+    }
+
+    // Create Playlist Dialog
+    if (showCreatePlaylistDialog) {
+        CreatePlaylistDialog(
+            onDismissRequest = { showCreatePlaylistDialog = false },
+            onCreate = { name ->
+                skimViewModel.createPlaylist(name) { pl ->
+                    Toast.makeText(context, "Created playlist \"${pl.title}\"", Toast.LENGTH_SHORT).show()
+                }
+                Toast.makeText(context, "Created playlist \"$name\"", Toast.LENGTH_SHORT).show()
+            }
+        )
+    }
 }
 
 @Composable
@@ -783,6 +869,8 @@ fun SkimPageCard(
     isDownloaded: Boolean,
     isDownloading: Boolean,
     isFullscreenLyrics: Boolean,
+    repeatState: RepeatState = RepeatState.None,
+    onToggleRepeat: () -> Unit = {},
     onToggleLyricsFullscreen: () -> Unit,
     onToggleLike: () -> Unit,
     onToggleDownload: () -> Unit,
@@ -1116,11 +1204,44 @@ fun SkimPageCard(
                     }
                 }
 
-                // Right Actions: Download & Queue
+                // Right Actions: Repeat, Download & Queue
                 Row(
-                    horizontalArrangement = Arrangement.spacedBy(14.dp),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
+                    // Repeat Button (Off -> Repeat Playlist -> Repeat Song -> Off)
+                    IconButton(
+                        onClick = onToggleRepeat,
+                        modifier = Modifier.size(32.dp)
+                    ) {
+                        when (repeatState) {
+                            RepeatState.One -> {
+                                Icon(
+                                    imageVector = Icons.Default.RepeatOne,
+                                    contentDescription = "Repeat Song",
+                                    tint = RessoAccent,
+                                    modifier = Modifier.size(22.dp)
+                                )
+                            }
+                            RepeatState.All -> {
+                                Icon(
+                                    imageVector = Icons.Default.Repeat,
+                                    contentDescription = "Repeat Playlist",
+                                    tint = RessoAccent,
+                                    modifier = Modifier.size(22.dp)
+                                )
+                            }
+                            else -> {
+                                Icon(
+                                    imageVector = Icons.Default.Repeat,
+                                    contentDescription = "Repeat Off",
+                                    tint = Color(0x66FFFFFF),
+                                    modifier = Modifier.size(22.dp)
+                                )
+                            }
+                        }
+                    }
+
                     // Download Button
                     IconButton(
                         onClick = onToggleDownload,

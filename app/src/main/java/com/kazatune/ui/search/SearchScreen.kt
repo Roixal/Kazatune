@@ -1,5 +1,15 @@
 package com.kazatune.ui.search
 
+import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Shuffle
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.OutlinedButton
+import com.kazatune.viewmodel.SearchDetailState
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -86,6 +96,7 @@ fun SearchScreen(
     val suggestions by searchViewModel.suggestions.collectAsStateWithLifecycle()
     val isSearching by searchViewModel.isSearching.collectAsStateWithLifecycle()
     val selectedCategory by searchViewModel.selectedCategory.collectAsStateWithLifecycle()
+    val searchDetailState by searchViewModel.searchDetailState.collectAsStateWithLifecycle()
 
     val focusManager = LocalFocusManager.current
 
@@ -101,8 +112,19 @@ fun SearchScreen(
         SearchCategory.PLAYLISTS -> searchPlaylistsResult.isNotEmpty()
     }
 
+    // If detail view is open for an Album, Artist, or Playlist
+    if (searchDetailState !is SearchDetailState.None) {
+        SearchDetailView(
+            state = searchDetailState,
+            onBack = { searchViewModel.dismissDetail() },
+            onPlayTracks = onPlayTracks,
+            onPlayTrack = onPlayTrack
+        )
+        return
+    }
+
     Column(
-        modifier = modifier
+        modifier = Modifier
             .fillMaxSize()
             .background(Color(0xFF0F0E13))
             .statusBarsPadding()
@@ -285,11 +307,7 @@ fun SearchScreen(
                                     AlbumSearchResultItem(
                                         album = album,
                                         onPlay = {
-                                            searchViewModel.playAlbum(album) { tracks ->
-                                                if (tracks.isNotEmpty()) {
-                                                    onPlayTracks(tracks, 0)
-                                                }
-                                            }
+                                            searchViewModel.loadAlbumDetail(album)
                                         }
                                     )
                                 }
@@ -299,11 +317,7 @@ fun SearchScreen(
                                     ArtistSearchResultItem(
                                         artist = artist,
                                         onPlay = {
-                                            searchViewModel.playArtist(artist) { tracks ->
-                                                if (tracks.isNotEmpty()) {
-                                                    onPlayTracks(tracks, 0)
-                                                }
-                                            }
+                                            searchViewModel.loadArtistDetail(artist)
                                         }
                                     )
                                 }
@@ -313,11 +327,7 @@ fun SearchScreen(
                                     PlaylistSearchResultItem(
                                         playlist = playlist,
                                         onPlay = {
-                                            searchViewModel.playPlaylist(playlist) { tracks ->
-                                                if (tracks.isNotEmpty()) {
-                                                    onPlayTracks(tracks, 0)
-                                                }
-                                            }
+                                            searchViewModel.loadPlaylistDetail(playlist)
                                         }
                                     )
                                 }
@@ -365,7 +375,7 @@ fun SearchScreen(
                                 modifier = Modifier.fillMaxSize(),
                                 contentPadding = PaddingValues(start = 20.dp, end = 20.dp, top = 4.dp, bottom = 120.dp)
                             ) {
-                                items(searchHistory) { history ->
+                                items(searchHistory, key = { it.query }) { history ->
                                     Row(
                                         modifier = Modifier
                                             .fillMaxWidth()
@@ -373,7 +383,7 @@ fun SearchScreen(
                                                 searchViewModel.search(history.query)
                                                 focusManager.clearFocus()
                                             }
-                                            .padding(vertical = 12.dp),
+                                            .padding(vertical = 8.dp),
                                         verticalAlignment = Alignment.CenterVertically
                                     ) {
                                         Icon(
@@ -390,6 +400,17 @@ fun SearchScreen(
                                             color = Color.White,
                                             modifier = Modifier.weight(1f)
                                         )
+                                        IconButton(
+                                            onClick = { searchViewModel.deleteSearchHistoryItem(history.query) },
+                                            modifier = Modifier.size(32.dp)
+                                        ) {
+                                            Icon(
+                                                imageVector = Icons.Default.Close,
+                                                contentDescription = "Delete search",
+                                                tint = Color(0x88FFFFFF),
+                                                modifier = Modifier.size(18.dp)
+                                            )
+                                        }
                                     }
                                 }
                             }
@@ -813,6 +834,317 @@ fun PlaylistSearchResultItem(
                     modifier = Modifier.size(20.dp)
                 )
             }
+        }
+    }
+}
+
+
+@Composable
+fun SearchDetailView(
+    state: SearchDetailState,
+    onBack: () -> Unit,
+    onPlayTracks: (List<Track>, Int) -> Unit,
+    onPlayTrack: (Track) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    BackHandler { onBack() }
+
+    Column(
+        modifier = modifier
+            .fillMaxSize()
+            .background(Color(0xFF0F0E13))
+            .statusBarsPadding()
+    ) {
+        // Top App Bar with Back Button
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 12.dp, vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            IconButton(onClick = onBack) {
+                Icon(
+                    imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                    contentDescription = "Back",
+                    tint = Color.White
+                )
+            }
+            Spacer(modifier = Modifier.width(8.dp))
+            Text(
+                text = when (state) {
+                    is SearchDetailState.Loading -> state.type
+                    is SearchDetailState.Success -> state.type
+                    else -> "Details"
+                },
+                fontFamily = DinProFamily,
+                fontSize = 18.sp,
+                fontWeight = FontWeight.Bold,
+                color = Color.White
+            )
+        }
+
+        when (state) {
+            is SearchDetailState.Loading -> {
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(24.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.Center
+                ) {
+                    if (!state.imageUrl.isNullOrBlank()) {
+                        AsyncImage(
+                            model = state.imageUrl,
+                            contentDescription = state.title,
+                            contentScale = ContentScale.Crop,
+                            modifier = Modifier
+                                .size(180.dp)
+                                .clip(if (state.type == "Artist") CircleShape else RoundedCornerShape(16.dp))
+                        )
+                        Spacer(modifier = Modifier.height(16.dp))
+                    }
+                    Text(
+                        text = state.title,
+                        fontFamily = DinProFamily,
+                        fontSize = 20.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color.White
+                    )
+                    Spacer(modifier = Modifier.height(24.dp))
+                    CircularProgressIndicator(
+                        color = RessoAccent,
+                        modifier = Modifier.size(36.dp),
+                        strokeWidth = 3.dp
+                    )
+                }
+            }
+            is SearchDetailState.Error -> {
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(24.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.Center
+                ) {
+                    Text(
+                        text = state.message,
+                        fontFamily = DinProFamily,
+                        fontSize = 15.sp,
+                        color = Color(0xAAFFFFFF)
+                    )
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Button(
+                        onClick = onBack,
+                        colors = ButtonDefaults.buttonColors(containerColor = RessoAccent)
+                    ) {
+                        Text("Back", color = Color.White, fontFamily = DinProFamily)
+                    }
+                }
+            }
+            is SearchDetailState.Success -> {
+                LazyColumn(
+                    modifier = Modifier.fillMaxSize(),
+                    contentPadding = PaddingValues(bottom = 120.dp)
+                ) {
+                    // Header Card
+                    item {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 24.dp, vertical = 12.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            if (!state.imageUrl.isNullOrBlank()) {
+                                AsyncImage(
+                                    model = state.imageUrl,
+                                    contentDescription = state.title,
+                                    contentScale = ContentScale.Crop,
+                                    modifier = Modifier
+                                        .size(190.dp)
+                                        .clip(if (state.type == "Artist") CircleShape else RoundedCornerShape(16.dp))
+                                )
+                                Spacer(modifier = Modifier.height(16.dp))
+                            }
+
+                            Text(
+                                text = state.title,
+                                fontFamily = DinProFamily,
+                                fontSize = 22.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = Color.White,
+                                maxLines = 2,
+                                overflow = TextOverflow.Ellipsis
+                            )
+
+                            if (!state.subtitle.isNullOrBlank()) {
+                                Spacer(modifier = Modifier.height(4.dp))
+                                Text(
+                                    text = state.subtitle,
+                                    fontFamily = DinProFamily,
+                                    fontSize = 14.sp,
+                                    color = Color(0xAAFFFFFF)
+                                )
+                            }
+
+                            if (!state.description.isNullOrBlank()) {
+                                Spacer(modifier = Modifier.height(8.dp))
+                                Text(
+                                    text = state.description,
+                                    fontFamily = DinProFamily,
+                                    fontSize = 12.sp,
+                                    color = Color(0x77FFFFFF),
+                                    maxLines = 3,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                            }
+
+                            Spacer(modifier = Modifier.height(16.dp))
+
+                            // Play and Shuffle buttons
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(12.dp)
+                            ) {
+                                Button(
+                                    onClick = {
+                                        if (state.tracks.isNotEmpty()) {
+                                            onPlayTracks(state.tracks, 0)
+                                        }
+                                    },
+                                    enabled = state.tracks.isNotEmpty(),
+                                    colors = ButtonDefaults.buttonColors(containerColor = RessoAccent),
+                                    shape = RoundedCornerShape(24.dp),
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .height(46.dp)
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.PlayArrow,
+                                        contentDescription = "Play",
+                                        tint = Color.White,
+                                        modifier = Modifier.size(20.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(6.dp))
+                                    Text(
+                                        text = "Play",
+                                        fontFamily = DinProFamily,
+                                        fontSize = 15.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = Color.White
+                                    )
+                                }
+
+                                OutlinedButton(
+                                    onClick = {
+                                        if (state.tracks.isNotEmpty()) {
+                                            val shuffled = state.tracks.shuffled()
+                                            onPlayTracks(shuffled, 0)
+                                        }
+                                    },
+                                    enabled = state.tracks.isNotEmpty(),
+                                    border = BorderStroke(1.dp, Color(0x33FFFFFF)),
+                                    colors = ButtonDefaults.outlinedButtonColors(containerColor = Color(0xFF1B1A24)),
+                                    shape = RoundedCornerShape(24.dp),
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .height(46.dp)
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Shuffle,
+                                        contentDescription = "Shuffle",
+                                        tint = Color.White,
+                                        modifier = Modifier.size(18.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(6.dp))
+                                    Text(
+                                        text = "Shuffle",
+                                        fontFamily = DinProFamily,
+                                        fontSize = 15.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = Color.White
+                                    )
+                                }
+                            }
+                        }
+                    }
+
+                    // Section Header
+                    item {
+                        Text(
+                            text = if (state.type == "Artist") "Top Songs" else "Tracks (${state.tracks.size})",
+                            fontFamily = DinProFamily,
+                            fontSize = 16.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color.White,
+                            modifier = Modifier.padding(horizontal = 24.dp, vertical = 8.dp)
+                        )
+                    }
+
+                    // Tracks List
+                    itemsIndexed(state.tracks) { index, track ->
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable { onPlayTracks(state.tracks, index) }
+                                .padding(horizontal = 20.dp, vertical = 10.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = "${index + 1}",
+                                fontFamily = DinProFamily,
+                                fontSize = 13.sp,
+                                color = Color(0x66FFFFFF),
+                                modifier = Modifier.width(28.dp)
+                            )
+
+                            val thumb = track.thumbnails?.firstOrNull()?.url
+                            if (!thumb.isNullOrBlank()) {
+                                AsyncImage(
+                                    model = thumb,
+                                    contentDescription = track.title,
+                                    contentScale = ContentScale.Crop,
+                                    modifier = Modifier
+                                        .size(44.dp)
+                                        .clip(RoundedCornerShape(8.dp))
+                                )
+                                Spacer(modifier = Modifier.width(12.dp))
+                            }
+
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    text = track.title,
+                                    fontFamily = DinProFamily,
+                                    fontSize = 14.sp,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = Color.White,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                                Spacer(modifier = Modifier.height(2.dp))
+                                Text(
+                                    text = track.artists?.joinToString(", ") { it.name ?: "" } ?: "Unknown Artist",
+                                    fontFamily = DinProFamily,
+                                    fontSize = 12.sp,
+                                    color = Color(0x88FFFFFF),
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                            }
+
+                            track.duration?.let { dur ->
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text(
+                                    text = dur,
+                                    fontFamily = DinProFamily,
+                                    fontSize = 12.sp,
+                                    color = Color(0x66FFFFFF)
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+            SearchDetailState.None -> Unit
         }
     }
 }

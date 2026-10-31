@@ -62,6 +62,7 @@ internal class LocalDataSource(
     suspend fun getSearchHistory() = databaseDao.getSearchHistory()
 
     suspend fun deleteSearchHistory() = databaseDao.deleteSearchHistory()
+    suspend fun deleteSearchHistoryItem(query: String) = databaseDao.deleteSearchHistoryItem(query)
 
     suspend fun insertSearchHistory(searchHistory: SearchHistory) = databaseDao.insertSearchHistory(searchHistory)
 

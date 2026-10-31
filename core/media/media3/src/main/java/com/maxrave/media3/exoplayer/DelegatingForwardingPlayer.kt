@@ -255,44 +255,31 @@ internal class DelegatingForwardingPlayer(
 
     override fun getAvailableCommands(): Player.Commands {
         val baseCommands = super.getAvailableCommands()
-        val nav = playlistNavigationProvider ?: return baseCommands
-
         val builder = baseCommands.buildUpon()
 
-        // Always add seek-to-previous (allows seek to start of track even if no previous item)
+        // Always add seek-to-previous and seek-to-next so next/previous buttons are always present
+        // in system media notifications, lockscreen, and connected devices
         builder.add(Player.COMMAND_SEEK_TO_PREVIOUS)
-
-        if (nav.hasNextMediaItem()) {
-            builder.add(Player.COMMAND_SEEK_TO_NEXT)
-            builder.add(Player.COMMAND_SEEK_TO_NEXT_MEDIA_ITEM)
-        }
-        if (nav.hasPreviousMediaItem()) {
-            builder.add(Player.COMMAND_SEEK_TO_PREVIOUS_MEDIA_ITEM)
-        }
+        builder.add(Player.COMMAND_SEEK_TO_PREVIOUS_MEDIA_ITEM)
+        builder.add(Player.COMMAND_SEEK_TO_NEXT)
+        builder.add(Player.COMMAND_SEEK_TO_NEXT_MEDIA_ITEM)
 
         return builder.build()
     }
 
     override fun isCommandAvailable(command: Int): Boolean {
-        val nav = playlistNavigationProvider
-        if (nav != null) {
-            when (command) {
-                Player.COMMAND_SEEK_TO_NEXT, Player.COMMAND_SEEK_TO_NEXT_MEDIA_ITEM ->
-                    return nav.hasNextMediaItem()
-                Player.COMMAND_SEEK_TO_PREVIOUS ->
-                    return true // Always allow seeking to start of current track
-                Player.COMMAND_SEEK_TO_PREVIOUS_MEDIA_ITEM ->
-                    return nav.hasPreviousMediaItem()
-            }
+        when (command) {
+            Player.COMMAND_SEEK_TO_NEXT, Player.COMMAND_SEEK_TO_NEXT_MEDIA_ITEM ->
+                return true
+            Player.COMMAND_SEEK_TO_PREVIOUS, Player.COMMAND_SEEK_TO_PREVIOUS_MEDIA_ITEM ->
+                return true
         }
         return super.isCommandAvailable(command)
     }
 
-    override fun hasNextMediaItem(): Boolean =
-        playlistNavigationProvider?.hasNextMediaItem() ?: super.hasNextMediaItem()
+    override fun hasNextMediaItem(): Boolean = true
 
-    override fun hasPreviousMediaItem(): Boolean =
-        playlistNavigationProvider?.hasPreviousMediaItem() ?: super.hasPreviousMediaItem()
+    override fun hasPreviousMediaItem(): Boolean = true
 
     override fun seekToNext() {
         val nav = playlistNavigationProvider
