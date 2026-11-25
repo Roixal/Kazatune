@@ -263,6 +263,8 @@ class SkimViewModel(
     private var lyricsJob: Job? = null
     private var radioJob: Job? = null
     private var progressTickerJob: Job? = null
+    private var manualSwitchJob: Job? = null
+    private var pairSyncJob: Job? = null
     private var refreshCounter = 0
     private var loadingMore = false
     private var lastScrobbledVideoId: String? = null
@@ -456,10 +458,12 @@ class SkimViewModel(
                                         playlistId = "SKIM_FEED"
                                     )
                                 )
-                                if (queueTracks.size > 1) {
-                                    mediaPlayerHandler.addMediaItemList(
-                                        queueTracks.drop(1).map { it.toGenericMediaItem() }
-                                    )
+                                queueTracks.getOrNull(1)?.let { nextTrack ->
+                                    if (mediaPlayerHandler.player.mediaItemCount <= 1) {
+                                        mediaPlayerHandler.addMediaItemList(
+                                            listOf(nextTrack.toGenericMediaItem())
+                                        )
+                                    }
                                 }
                             }
                             return@collect
@@ -612,6 +616,12 @@ class SkimViewModel(
                         if (foundIndex >= 0) {
                             if (_currentIndex.value != foundIndex) {
                                 _currentIndex.value = foundIndex
+                            }
+                            // Arm ONLY the single next song for DJ transition when current finishes naturally
+                            val nextAfter = currentList.getOrNull(foundIndex + 1)
+                            val player = mediaPlayerHandler.player
+                            if (nextAfter != null && player.currentMediaItemIndex >= player.mediaItemCount - 1) {
+                                mediaPlayerHandler.addMediaItemList(listOf(nextAfter.toGenericMediaItem()))
                             }
                         } else if (currentList.isEmpty()) {
                             val newTrack = state.track ?: createFallbackTrack(state)
@@ -790,6 +800,8 @@ class SkimViewModel(
         resetLyricsOffset()
         updateLastFmNowPlaying(track.videoId)
 
+        manualSwitchJob?.cancel()
+        pairSyncJob?.cancel()
         viewModelScope.launch(Dispatchers.Main) {
             withContext(Dispatchers.IO) {
                 songRepository.insertSong(track.toSongEntity()).collect {}
@@ -804,9 +816,8 @@ class SkimViewModel(
                 )
             )
 
-            mediaPlayerHandler.clearMediaItems()
-            mediaPlayerHandler.addMediaItemList(tracks.map { it.toGenericMediaItem() })
-            mediaPlayerHandler.playMediaItemInMediaSource(safeIndex)
+            mediaPlayerHandler.player.volume = 1.0f
+            syncPlayerPair(track, tracks.getOrNull(safeIndex + 1))
         }
 
         listOfNotNull(
@@ -839,7 +850,18 @@ class SkimViewModel(
 
         val currentPlayingVideoId = mediaPlayerHandler.nowPlayingState.value.mediaItem.mediaId
         if (currentPlayingVideoId != track.videoId) {
-            viewModelScope.launch(Dispatchers.Main) {
+            manualSwitchJob?.cancel()
+            pairSyncJob?.cancel()
+            manualSwitchJob = viewModelScope.launch(Dispatchers.Main) {
+                val player = mediaPlayerHandler.player
+                // Manual skip crossfade: smoothly fade down current song before bringing next song up
+                if (player.isPlaying) {
+                    for (step in 4 downTo 1) {
+                        player.volume = step * 0.2f
+                        delay(40)
+                    }
+                }
+
                 withContext(Dispatchers.IO) {
                     songRepository.insertSong(track.toSongEntity()).collect {}
                     track.durationSeconds?.let { songRepository.updateDurationSeconds(it, track.videoId) }
@@ -853,14 +875,15 @@ class SkimViewModel(
                     )
                 )
 
-                val player = mediaPlayerHandler.player
-                if (player.mediaItemCount == trackList.size && index in 0 until player.mediaItemCount) {
-                    mediaPlayerHandler.playMediaItemInMediaSource(index)
-                } else {
-                    mediaPlayerHandler.clearMediaItems()
-                    mediaPlayerHandler.addMediaItemList(trackList.map { it.toGenericMediaItem() })
-                    mediaPlayerHandler.playMediaItemInMediaSource(index)
+                player.volume = 0.15f
+                syncPlayerPair(track, trackList.getOrNull(index + 1))
+
+                // Smoothly ramp incoming song volume back up
+                for (step in 2..10) {
+                    delay(45)
+                    player.volume = step / 10f
                 }
+                player.volume = 1.0f
             }
         }
 
@@ -884,6 +907,24 @@ class SkimViewModel(
 
         if (index >= trackList.size - 4 && !loadingMore) {
             fetchRadioQueue(track.videoId, track)
+        }
+    }
+
+    /**
+     * Loads the current track cleanly as the active item, then queues ONLY the single
+     * next track behind it so CrossfadeExoPlayerAdapter performs DJ transitions exclusively
+     * between (current -> next) when the song finishes playing naturally.
+     */
+    private fun syncPlayerPair(current: Track, next: Track?) {
+        mediaPlayerHandler.addMediaItem(current.toGenericMediaItem(), playWhenReady = true)
+        if (next != null && next.videoId != current.videoId) {
+            pairSyncJob?.cancel()
+            pairSyncJob = viewModelScope.launch(Dispatchers.Main) {
+                delay(250)
+                if (_tracks.value.getOrNull(_currentIndex.value)?.videoId == current.videoId) {
+                    mediaPlayerHandler.addMediaItemList(listOf(next.toGenericMediaItem()))
+                }
+            }
         }
     }
 
@@ -1023,7 +1064,12 @@ class SkimViewModel(
                                 playlistId = "SKIM_FEED"
                             )
                         )
-                        mediaPlayerHandler.addMediaItemList(newTracks.map { it.toGenericMediaItem() })
+                        // Arm only the immediate next track if player doesn't have one queued yet
+                        val player = mediaPlayerHandler.player
+                        val nextImmediate = updatedList.getOrNull(_currentIndex.value + 1)
+                        if (nextImmediate != null && player.currentMediaItemIndex >= player.mediaItemCount - 1) {
+                            mediaPlayerHandler.addMediaItemList(listOf(nextImmediate.toGenericMediaItem()))
+                        }
                     }
                     newTracks.firstOrNull()?.let { preloadTrack(it) }
                 }
