@@ -42,6 +42,15 @@ class SettingsViewModel(
     private val _lastfmScrobbleEnabled = MutableStateFlow(true)
     val lastfmScrobbleEnabled: StateFlow<Boolean> = _lastfmScrobbleEnabled.asStateFlow()
 
+    private val _crossfadeEnabled = MutableStateFlow(false)
+    val crossfadeEnabled: StateFlow<Boolean> = _crossfadeEnabled.asStateFlow()
+
+    private val _crossfadeDuration = MutableStateFlow(DataStoreManager.CROSSFADE_DURATION_AUTO)
+    val crossfadeDuration: StateFlow<Int> = _crossfadeDuration.asStateFlow()
+
+    private val _crossfadeDjMode = MutableStateFlow(true)
+    val crossfadeDjMode: StateFlow<Boolean> = _crossfadeDjMode.asStateFlow()
+
     val sleepTimerState = mediaPlayerHandler.sleepTimerState
 
     init {
@@ -83,6 +92,21 @@ class SettingsViewModel(
         viewModelScope.launch(Dispatchers.IO) {
             dataStoreManager.lastfmScrobbleEnabled.collect { sc ->
                 _lastfmScrobbleEnabled.value = sc == DataStoreManager.Values.TRUE || sc.equals("true", ignoreCase = true)
+            }
+        }
+        viewModelScope.launch(Dispatchers.IO) {
+            dataStoreManager.crossfadeEnabled.collect { enabled ->
+                _crossfadeEnabled.value = enabled == DataStoreManager.Values.TRUE
+            }
+        }
+        viewModelScope.launch(Dispatchers.IO) {
+            dataStoreManager.crossfadeDuration.collect { dur ->
+                _crossfadeDuration.value = dur
+            }
+        }
+        viewModelScope.launch(Dispatchers.IO) {
+            dataStoreManager.crossfadeDjMode.collect { dj ->
+                _crossfadeDjMode.value = dj == DataStoreManager.Values.TRUE
             }
         }
     }
@@ -150,6 +174,27 @@ class SettingsViewModel(
         viewModelScope.launch(Dispatchers.IO) {
             dataStoreManager.setLastfmScrobbleEnabled(enabled)
             _lastfmScrobbleEnabled.value = enabled
+        }
+    }
+
+    fun toggleCrossfade(enabled: Boolean) {
+        viewModelScope.launch(Dispatchers.IO) {
+            dataStoreManager.setCrossfadeEnabled(enabled)
+            _crossfadeEnabled.value = enabled
+        }
+    }
+
+    fun setCrossfadeDuration(durationMs: Int) {
+        viewModelScope.launch(Dispatchers.IO) {
+            dataStoreManager.setCrossfadeDuration(durationMs)
+            _crossfadeDuration.value = durationMs
+        }
+    }
+
+    fun toggleCrossfadeDjMode(enabled: Boolean) {
+        viewModelScope.launch(Dispatchers.IO) {
+            dataStoreManager.setCrossfadeDjMode(enabled)
+            _crossfadeDjMode.value = enabled
         }
     }
 

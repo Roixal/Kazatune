@@ -42,6 +42,7 @@ import androidx.compose.material.icons.filled.Bolt
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.CleaningServices
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.GraphicEq
 import androidx.compose.material.icons.filled.HighQuality
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Key
@@ -103,6 +104,9 @@ fun SettingsScreen(
     val sponsorBlockEnabled by settingsViewModel.sponsorBlockEnabled.collectAsStateWithLifecycle()
     val lastfmUsername by settingsViewModel.lastfmUsername.collectAsStateWithLifecycle()
     val lastfmScrobbleEnabled by settingsViewModel.lastfmScrobbleEnabled.collectAsStateWithLifecycle()
+    val crossfadeEnabled by settingsViewModel.crossfadeEnabled.collectAsStateWithLifecycle()
+    val crossfadeDuration by settingsViewModel.crossfadeDuration.collectAsStateWithLifecycle()
+    val crossfadeDjMode by settingsViewModel.crossfadeDjMode.collectAsStateWithLifecycle()
     val isAutoUpdateEnabled by updateViewModel.isAutoUpdateEnabled.collectAsStateWithLifecycle()
 
     val context = LocalContext.current
@@ -127,6 +131,7 @@ fun SettingsScreen(
     }
 
     var showQualityDialog by remember { mutableStateOf(false) }
+    var showCrossfadeDurationDialog by remember { mutableStateOf(false) }
     var showWebLoginDialog by remember { mutableStateOf(false) }
     var showCookieImportDialog by remember { mutableStateOf(false) }
     var showLastfmDialog by remember { mutableStateOf(false) }
@@ -335,6 +340,45 @@ fun SettingsScreen(
                     subtitle = "Skip sponsor segments, intros, and non-music interludes",
                     checked = sponsorBlockEnabled,
                     onCheckedChange = { settingsViewModel.toggleSponsorBlock(it) }
+                )
+            }
+
+            // Section: DJ Mix & Crossfade
+            item {
+                Spacer(modifier = Modifier.height(4.dp))
+                SettingsSectionHeader("DJ Mix & Crossfade")
+            }
+
+            item {
+                SettingsSwitchCard(
+                    icon = Icons.Default.GraphicEq,
+                    title = "Spotify-Style Mix & Crossfade",
+                    subtitle = "Seamless DJ transitions between songs (also customizable per playlist in Library)",
+                    checked = crossfadeEnabled,
+                    onCheckedChange = { settingsViewModel.toggleCrossfade(it) }
+                )
+            }
+
+            item {
+                val mixLabel = when (crossfadeDuration) {
+                    com.maxrave.domain.manager.DataStoreManager.CROSSFADE_DURATION_AUTO -> "Auto (BPM & Camelot Key Mix)"
+                    else -> "${crossfadeDuration / 1000}s Crossfade"
+                }
+                SettingsItemCard(
+                    icon = Icons.Default.GraphicEq,
+                    title = "Mix Transition Style",
+                    subtitle = mixLabel,
+                    onClick = { showCrossfadeDurationDialog = true }
+                )
+            }
+
+            item {
+                SettingsSwitchCard(
+                    icon = Icons.Default.GraphicEq,
+                    title = "DJ EQ Filter Sweeps",
+                    subtitle = "Apply low-pass & high-pass sweeps during crossfades",
+                    checked = crossfadeDjMode,
+                    onCheckedChange = { settingsViewModel.toggleCrossfadeDjMode(it) }
                 )
             }
 
@@ -817,6 +861,78 @@ fun SettingsScreen(
                         text = "Cancel",
                         fontFamily = DinProFamily,
                         color = Color(0x88FFFFFF)
+                    )
+                }
+            }
+        )
+    }
+
+    // Mix Transition Style Dialog
+    if (showCrossfadeDurationDialog) {
+        val options = listOf(
+            "Auto (BPM & Camelot Key Mix)" to com.maxrave.domain.manager.DataStoreManager.CROSSFADE_DURATION_AUTO,
+            "3s Smooth Crossfade" to 3000,
+            "5s Classic Crossfade" to 5000,
+            "8s DJ Overlap" to 8000,
+            "12s Extended Mix" to 12000
+        )
+
+        AlertDialog(
+            onDismissRequest = { showCrossfadeDurationDialog = false },
+            containerColor = Color(0xFF1C1B24),
+            title = {
+                Text(
+                    text = "Mix Transition Style",
+                    fontFamily = DinProFamily,
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Color.White
+                )
+            },
+            text = {
+                Column {
+                    options.forEach { (label, durationVal) ->
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable {
+                                    settingsViewModel.setCrossfadeDuration(durationVal)
+                                    settingsViewModel.toggleCrossfade(true)
+                                    showCrossfadeDurationDialog = false
+                                }
+                                .padding(vertical = 8.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            RadioButton(
+                                selected = crossfadeDuration == durationVal,
+                                onClick = {
+                                    settingsViewModel.setCrossfadeDuration(durationVal)
+                                    settingsViewModel.toggleCrossfade(true)
+                                    showCrossfadeDurationDialog = false
+                                },
+                                colors = RadioButtonDefaults.colors(
+                                    selectedColor = RessoAccent,
+                                    unselectedColor = Color(0x66FFFFFF)
+                                )
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                text = label,
+                                fontFamily = DinProFamily,
+                                fontSize = 14.sp,
+                                color = Color.White
+                            )
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { showCrossfadeDurationDialog = false }) {
+                    Text(
+                        text = "Done",
+                        fontFamily = DinProFamily,
+                        color = RessoAccent,
+                        fontWeight = FontWeight.Bold
                     )
                 }
             }

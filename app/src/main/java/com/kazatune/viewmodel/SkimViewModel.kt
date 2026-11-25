@@ -434,31 +434,42 @@ class SkimViewModel(
                         val activeVideoId = mediaPlayerHandler.nowPlayingState.value.mediaItem.mediaId
                         val isPlaying = controlState.value.isPlaying || activeVideoId.isNotBlank()
 
-                        val shuffledList = list.distinctBy { it.videoId }.shuffled()
-                        if (shuffledList.isNotEmpty()) {
-                            if (isPlaying && activeVideoId.isNotBlank()) {
-                                // Keep restored last-played song at index 0 so artwork matches,
-                                // then populate a fresh, varied queue behind it for endless scrolling
-                                val currentTrack = _tracks.value.firstOrNull { it.videoId == activeVideoId }
-                                    ?: mediaPlayerHandler.nowPlayingState.value.track
-                                    ?: shuffledList.firstOrNull { it.videoId == activeVideoId }
-                                    ?: createFallbackTrack(mediaPlayerHandler.nowPlayingState.value)
-                                val mergedList = listOf(currentTrack) + shuffledList.filter { it.videoId != activeVideoId }
-                                _tracks.value = mergedList
+                        if (isPlaying && activeVideoId.isNotBlank()) {
+                            // Keep restored last-played song at index 0, and build the upcoming queue
+                            // directly from songs SIMILAR to the last-played song (not random home genres)
+                            val currentTrack = _tracks.value.firstOrNull { it.videoId == activeVideoId }
+                                ?: mediaPlayerHandler.nowPlayingState.value.track
+                                ?: list.firstOrNull { it.videoId == activeVideoId }
+                                ?: createFallbackTrack(mediaPlayerHandler.nowPlayingState.value)
+
+                            val similar = fetchDiverseSimilarTracks(activeVideoId, setOf(activeVideoId))
+                            val fallbackHome = list.distinctBy { it.videoId }.filter { it.videoId != activeVideoId }.shuffled()
+                            val queueTracks = listOf(currentTrack) + (if (similar.isNotEmpty()) similar else fallbackHome)
+
+                            withContext(Dispatchers.Main) {
+                                _tracks.value = queueTracks
                                 _currentIndex.value = 0
                                 mediaPlayerHandler.setQueueData(
                                     QueueData.Data(
-                                        listTracks = mergedList,
+                                        listTracks = queueTracks,
                                         playlistType = PlaylistType.RADIO,
                                         playlistId = "SKIM_FEED"
                                     )
                                 )
-                                fetchRadioQueue(activeVideoId, currentTrack)
-                            } else {
-                                setTracksAndPlay(shuffledList, 0)
-                                if (shuffledList.size < 15) {
-                                    fetchRadioQueue(shuffledList.first().videoId, shuffledList.first())
+                                if (queueTracks.size > 1) {
+                                    mediaPlayerHandler.addMediaItemList(
+                                        queueTracks.drop(1).map { it.toGenericMediaItem() }
+                                    )
                                 }
+                            }
+                            return@collect
+                        }
+
+                        val shuffledList = list.distinctBy { it.videoId }.shuffled()
+                        if (shuffledList.isNotEmpty()) {
+                            setTracksAndPlay(shuffledList, 0)
+                            if (shuffledList.size < 15) {
+                                fetchRadioQueue(shuffledList.first().videoId, shuffledList.first())
                             }
                         } else if (firstPlaylistId != null && !isPlaying) {
                             songRepository.getRadioFromEndpoint(YouTubeWatchEndpoint(playlistId = firstPlaylistId)).collect { res ->
@@ -793,7 +804,9 @@ class SkimViewModel(
                 )
             )
 
-            mediaPlayerHandler.addMediaItem(track.toGenericMediaItem(), playWhenReady = true)
+            mediaPlayerHandler.clearMediaItems()
+            mediaPlayerHandler.addMediaItemList(tracks.map { it.toGenericMediaItem() })
+            mediaPlayerHandler.playMediaItemInMediaSource(safeIndex)
         }
 
         listOfNotNull(
@@ -840,7 +853,14 @@ class SkimViewModel(
                     )
                 )
 
-                mediaPlayerHandler.addMediaItem(track.toGenericMediaItem(), playWhenReady = true)
+                val player = mediaPlayerHandler.player
+                if (player.mediaItemCount == trackList.size && index in 0 until player.mediaItemCount) {
+                    mediaPlayerHandler.playMediaItemInMediaSource(index)
+                } else {
+                    mediaPlayerHandler.clearMediaItems()
+                    mediaPlayerHandler.addMediaItemList(trackList.map { it.toGenericMediaItem() })
+                    mediaPlayerHandler.playMediaItemInMediaSource(index)
+                }
             }
         }
 
@@ -995,13 +1015,16 @@ class SkimViewModel(
                 if (newTracks.isNotEmpty()) {
                     val updatedList = currentList + newTracks
                     _tracks.value = updatedList
-                    mediaPlayerHandler.setQueueData(
-                        QueueData.Data(
-                            listTracks = updatedList,
-                            playlistType = PlaylistType.RADIO,
-                            playlistId = "SKIM_FEED"
+                    withContext(Dispatchers.Main) {
+                        mediaPlayerHandler.setQueueData(
+                            QueueData.Data(
+                                listTracks = updatedList,
+                                playlistType = PlaylistType.RADIO,
+                                playlistId = "SKIM_FEED"
+                            )
                         )
-                    )
+                        mediaPlayerHandler.addMediaItemList(newTracks.map { it.toGenericMediaItem() })
+                    }
                     newTracks.firstOrNull()?.let { preloadTrack(it) }
                 }
             } catch (e: Exception) {
