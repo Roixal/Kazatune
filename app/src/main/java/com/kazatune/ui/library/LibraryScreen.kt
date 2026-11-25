@@ -34,6 +34,7 @@ import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.DeleteOutline
 import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.filled.GraphicEq
 import androidx.compose.material.icons.filled.MusicNote
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Shuffle
@@ -95,11 +96,14 @@ fun LibraryScreen(
     val ytPlaylists by libraryViewModel.ytPlaylists.collectAsStateWithLifecycle()
     val isLikedSongsBannerOpen by libraryViewModel.isLikedSongsBannerOpen.collectAsStateWithLifecycle()
     val isDownloadedSongsBannerOpen by libraryViewModel.isDownloadedSongsBannerOpen.collectAsStateWithLifecycle()
+    val mixConfigs by libraryViewModel.mixConfigs.collectAsStateWithLifecycle()
+    val trackAudioMeta by libraryViewModel.trackAudioMeta.collectAsStateWithLifecycle()
 
     var showTasteSheet by remember { mutableStateOf(false) }
     var showMigrationDialog by remember { mutableStateOf(false) }
     var showCreatePlaylistDialog by remember { mutableStateOf(false) }
     var loadingYtPlaylistId by remember { mutableStateOf<String?>(null) }
+    var activeMixTarget by remember { mutableStateOf<Triple<String, String, List<Track>>?>(null) }
     val tasteSheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
 
     // Handle back button when either banner view is open
@@ -467,8 +471,16 @@ fun LibraryScreen(
 
                     if (localPlaylists.isNotEmpty()) {
                         items(localPlaylists) { playlist ->
+                            val mixId = "local_${playlist.id}"
+                            val isMixEnabled = mixConfigs[mixId]?.mixEnabled == true
                             PlaylistListItem(
                                 playlist = playlist,
+                                isMixEnabled = isMixEnabled,
+                                onMixClick = {
+                                    libraryViewModel.getLocalPlaylistTracks(playlist) { tracks ->
+                                        activeMixTarget = Triple(mixId, playlist.title, tracks)
+                                    }
+                                },
                                 onPlay = {
                                     libraryViewModel.playLocalPlaylist(playlist) { tracks ->
                                         if (tracks.isNotEmpty()) {
@@ -618,6 +630,34 @@ fun LibraryScreen(
             }
         )
     }
+
+    // Spotify-Style Playlist Mix Sheet
+    val mixTarget = activeMixTarget
+    if (mixTarget != null) {
+        val (mixPlaylistId, mixTitle, mixTracks) = mixTarget
+        val currentSettings = mixConfigs[mixPlaylistId]
+            ?: com.kazatune.mix.PlaylistMixSettings(playlistId = mixPlaylistId)
+        PlaylistMixSheet(
+            playlistTitle = mixTitle,
+            tracks = mixTracks,
+            settings = currentSettings,
+            trackAudioMeta = trackAudioMeta,
+            onDismissRequest = { activeMixTarget = null },
+            onUpdateSettings = { updated -> libraryViewModel.updatePlaylistMix(updated) },
+            onSetPairTransition = { fromId, toId, transition ->
+                libraryViewModel.setPairTransition(mixPlaylistId, fromId, toId, transition)
+            },
+            onPlayMixed = {
+                if (mixTracks.isNotEmpty()) {
+                    libraryViewModel.applyMixSettingsForTracks(mixPlaylistId, mixTracks)
+                    onPlayTracks(mixTracks, 0)
+                }
+            },
+            onShareMixedJson = {
+                libraryViewModel.exportMixedPlaylist(mixTitle, mixTracks, mixPlaylistId)
+            }
+        )
+    }
 }
 
 /**
@@ -741,8 +781,8 @@ fun LikedSongsBannerExpandedView(
                                 Button(
                                     onClick = onPlayAll,
                                     colors = ButtonDefaults.buttonColors(
-                                        containerColor = Color.White,
-                                        contentColor = Color.Black
+                                        containerColor = RessoAccent,
+                                        contentColor = Color.White
                                     ),
                                     shape = CircleShape,
                                     contentPadding = PaddingValues(horizontal = 16.dp, vertical = 6.dp)
@@ -750,7 +790,7 @@ fun LikedSongsBannerExpandedView(
                                     Icon(
                                         imageVector = Icons.Default.PlayArrow,
                                         contentDescription = "Play All",
-                                        tint = Color.Black,
+                                        tint = Color.White,
                                         modifier = Modifier.size(18.dp)
                                     )
                                     Spacer(modifier = Modifier.width(4.dp))
@@ -875,8 +915,8 @@ fun LikedSongsHeroCard(
                             Button(
                                 onClick = onPlayAll,
                                 colors = ButtonDefaults.buttonColors(
-                                    containerColor = Color.White,
-                                    contentColor = Color.Black
+                                    containerColor = RessoAccent,
+                                    contentColor = Color.White
                                 ),
                                 shape = CircleShape,
                                 contentPadding = PaddingValues(horizontal = 14.dp, vertical = 6.dp)
@@ -884,7 +924,7 @@ fun LikedSongsHeroCard(
                                 Icon(
                                     imageVector = Icons.Default.PlayArrow,
                                     contentDescription = "Play",
-                                    tint = Color.Black,
+                                    tint = Color.White,
                                     modifier = Modifier.size(16.dp)
                                 )
                                 Spacer(modifier = Modifier.width(4.dp))
@@ -997,8 +1037,8 @@ fun DownloadedSongsHeroCard(
                             Button(
                                 onClick = onPlayAll,
                                 colors = ButtonDefaults.buttonColors(
-                                    containerColor = Color.White,
-                                    contentColor = Color.Black
+                                    containerColor = RessoAccent,
+                                    contentColor = Color.White
                                 ),
                                 shape = CircleShape,
                                 contentPadding = PaddingValues(horizontal = 14.dp, vertical = 6.dp)
@@ -1006,7 +1046,7 @@ fun DownloadedSongsHeroCard(
                                 Icon(
                                     imageVector = Icons.Default.PlayArrow,
                                     contentDescription = "Play",
-                                    tint = Color.Black,
+                                    tint = Color.White,
                                     modifier = Modifier.size(16.dp)
                                 )
                                 Spacer(modifier = Modifier.width(4.dp))
@@ -1209,8 +1249,8 @@ fun DownloadedSongsBannerExpandedView(
                                 Button(
                                     onClick = onPlayAll,
                                     colors = ButtonDefaults.buttonColors(
-                                        containerColor = Color.White,
-                                        contentColor = Color.Black
+                                        containerColor = RessoAccent,
+                                        contentColor = Color.White
                                     ),
                                     shape = CircleShape,
                                     contentPadding = PaddingValues(horizontal = 16.dp, vertical = 6.dp)
@@ -1218,7 +1258,7 @@ fun DownloadedSongsBannerExpandedView(
                                     Icon(
                                         imageVector = Icons.Default.PlayArrow,
                                         contentDescription = "Play All",
-                                        tint = Color.Black,
+                                        tint = Color.White,
                                         modifier = Modifier.size(18.dp)
                                     )
                                     Spacer(modifier = Modifier.width(4.dp))
@@ -1513,6 +1553,8 @@ fun SongListItem(
 fun PlaylistListItem(
     playlist: LocalPlaylistEntity,
     onPlay: () -> Unit,
+    isMixEnabled: Boolean = false,
+    onMixClick: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     Surface(
@@ -1574,11 +1616,28 @@ fun PlaylistListItem(
             }
 
             IconButton(
+                onClick = onMixClick,
+                modifier = Modifier
+                    .size(34.dp)
+                    .clip(CircleShape)
+                    .background(if (isMixEnabled) Color(0x3300E5FF) else Color(0xFF2B2A36))
+            ) {
+                Icon(
+                    imageVector = Icons.Default.GraphicEq,
+                    contentDescription = "Playlist Mix",
+                    tint = if (isMixEnabled) Color(0xFF00E5FF) else Color(0xCCFFFFFF),
+                    modifier = Modifier.size(18.dp)
+                )
+            }
+
+            Spacer(modifier = Modifier.width(8.dp))
+
+            IconButton(
                 onClick = onPlay,
                 modifier = Modifier
                     .size(34.dp)
                     .clip(CircleShape)
-                    .background(Color(0xFF2B2A36))
+                    .background(RessoAccent)
             ) {
                 Icon(
                     imageVector = Icons.Default.PlayArrow,

@@ -115,7 +115,7 @@ fun PlaylistMigrationDialog(
                 when (val s = state) {
                     is MigrationState.Idle -> {
                         Text(
-                            text = "Paste a YouTube playlist link, or a tracklist (Song - Artist per line) to convert into a Skim local playlist.",
+                            text = "Paste a Spotify or YouTube playlist link, or a tracklist (Song - Artist per line) to convert into a Skim local playlist.",
                             fontFamily = DinProFamily,
                             fontSize = 13.sp,
                             color = Color(0xAAFFFFFF),

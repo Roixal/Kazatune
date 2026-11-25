@@ -13,7 +13,9 @@ import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.content.ContextCompat
 import android.content.Intent
+import android.content.res.Configuration
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import com.kazatune.updater.UpdateNotificationHelper
 import com.kazatune.updater.model.UpdateStatus
@@ -163,32 +165,35 @@ fun MainRootScreen(
             }
         }
 
-        // Bottom Bar & Mini Player Bar
-        Column(
-            modifier = Modifier.align(Alignment.BottomCenter)
-        ) {
-            // Show Mini Player when NOT on Skim tab
-            if (currentTab != MainTab.SKIM) {
-                MiniPlayerBar(
-                    nowPlaying = nowPlaying,
-                    isPlaying = controlState.isPlaying,
-                    onTogglePlayPause = { skimViewModel.togglePlayPause() },
-                    onClick = {
-                        skimViewModel.selectSkimTab(com.kazatune.viewmodel.SkimTab.FOR_YOU)
-                        currentTab = MainTab.SKIM
+        // Bottom Bar & Mini Player Bar (hidden in landscape mode for clean player view)
+        val isLandscape = LocalConfiguration.current.orientation == Configuration.ORIENTATION_LANDSCAPE
+        if (!isLandscape) {
+            Column(
+                modifier = Modifier.align(Alignment.BottomCenter)
+            ) {
+                // Show Mini Player when NOT on Skim tab
+                if (currentTab != MainTab.SKIM) {
+                    MiniPlayerBar(
+                        nowPlaying = nowPlaying,
+                        isPlaying = controlState.isPlaying,
+                        onTogglePlayPause = { skimViewModel.togglePlayPause() },
+                        onClick = {
+                            skimViewModel.selectSkimTab(com.kazatune.viewmodel.SkimTab.FOR_YOU)
+                            currentTab = MainTab.SKIM
+                        }
+                    )
+                }
+
+                SkimMusicBottomBar(
+                    currentTab = currentTab,
+                    onTabSelected = { tab ->
+                        if (tab == MainTab.SKIM && currentTab != MainTab.SKIM) {
+                            skimViewModel.selectSkimTab(com.kazatune.viewmodel.SkimTab.FOR_YOU)
+                        }
+                        currentTab = tab
                     }
                 )
             }
-
-            SkimMusicBottomBar(
-                currentTab = currentTab,
-                onTabSelected = { tab ->
-                    if (tab == MainTab.SKIM && currentTab != MainTab.SKIM) {
-                        skimViewModel.selectSkimTab(com.kazatune.viewmodel.SkimTab.FOR_YOU)
-                    }
-                    currentTab = tab
-                }
-            )
         }
 
         // In-App Update Dialog (Overlay)

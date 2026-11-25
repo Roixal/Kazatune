@@ -342,6 +342,10 @@ object QUALITY {
         mapOf(
             // Split into the Opus and AAC families; the plain "High" was always the Opus one.
             "High - 256kps (YT Premium)" to items[2].toString(),
+            "High" to items[2].toString(),
+            "Medium" to items[1].toString(),
+            "Low" to items[0].toString(),
+            "Auto" to items[2].toString(),
         )
 
     /**

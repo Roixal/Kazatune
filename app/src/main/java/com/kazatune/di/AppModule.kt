@@ -1,5 +1,6 @@
 package com.kazatune.di
 
+import com.kazatune.mix.PlaylistMixManager
 import com.kazatune.updater.UpdateNotificationHelper
 import com.kazatune.updater.UpdatePreferences
 import com.kazatune.updater.UpdateRepository
@@ -18,6 +19,7 @@ val appModule = module {
     single { UpdatePreferences(get()) }
     single { UpdateNotificationHelper(get()) }
     single { UpdateRepository(get(), get()) }
+    single { PlaylistMixManager(get()) }
 
     viewModel {
         UpdateViewModel(
@@ -36,7 +38,8 @@ val appModule = module {
             downloadHandler = get(),
             dataStoreManager = get(),
             searchRepository = get(),
-            localPlaylistRepository = get()
+            localPlaylistRepository = get(),
+            playlistMixManager = get()
         )
     }
     viewModel {
@@ -61,7 +64,10 @@ val appModule = module {
             localPlaylistRepository = get(),
             playlistRepository = get(),
             mediaPlayerHandler = get(),
-            downloadHandler = get()
+            downloadHandler = get(),
+            dataStoreManager = get(),
+            streamRepository = get(),
+            playlistMixManager = get()
         )
     }
     viewModel {
@@ -83,7 +89,8 @@ val appModule = module {
             playlistRepository = get(),
             searchRepository = get(),
             songRepository = get(),
-            importRepository = get()
+            importRepository = get(),
+            playlistMixManager = get()
         )
     }
 }

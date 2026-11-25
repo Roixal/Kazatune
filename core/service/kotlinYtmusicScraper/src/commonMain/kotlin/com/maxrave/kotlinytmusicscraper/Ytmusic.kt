@@ -292,7 +292,8 @@ class Ytmusic {
         params: String? = null,
         continuation: String? = null,
     ) = httpClient.post("search") {
-        ytClient(client, true)
+        // Do not send login cookies/auth so in-app searches never leak into the user's YouTube search history
+        ytClient(client, setLogin = false)
         setBody(
             SearchBody(
                 context = client.toContext(locale, visitorData),

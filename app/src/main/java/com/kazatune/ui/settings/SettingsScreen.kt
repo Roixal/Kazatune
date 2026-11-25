@@ -535,9 +535,9 @@ fun SettingsScreen(
             item {
                 SettingsSwitchCard(
                     icon = Icons.Default.Radio,
-                    title = "Background Scrobbling",
-                    subtitle = if (lastfmUsername.isNotBlank()) "Scrobbling active for $lastfmUsername" else "Enable scrobbling to your Last.fm profile",
-                    checked = lastfmScrobbleEnabled && lastfmUsername.isNotBlank(),
+                    title = "Auto Background Scrobbling",
+                    subtitle = if (lastfmUsername.isNotBlank()) "Automatic scrobbling active for $lastfmUsername" else "Auto-logs plays locally & syncs to Last.fm once connected",
+                    checked = lastfmScrobbleEnabled,
                     onCheckedChange = { settingsViewModel.toggleLastfmScrobble(it) }
                 )
             }
@@ -826,6 +826,7 @@ fun SettingsScreen(
     // Audio Quality Dialog
     if (showQualityDialog) {
         val qualities = listOf(
+            "Auto (Adaptive Best)" to "Auto",
             "High (160 kbps Opus)" to "High",
             "Medium (128 kbps)" to "Medium",
             "Low (64 kbps)" to "Low"

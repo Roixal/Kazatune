@@ -90,6 +90,7 @@ import com.kazatune.ui.theme.LiquidGlassCard
 import com.kazatune.ui.theme.LiquidGlassColors
 import com.kazatune.ui.theme.LiquidGlassPill
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -426,124 +427,127 @@ fun SkimScreen(
             }
         }
 
-        // Top Navigation Header: [Skim (Refresh)] [For You | Explore] [More (...)]
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .statusBarsPadding()
-        ) {
-            Row(
+        // Top Navigation Header: [Skim (Refresh)] [For You | Explore | Moods] [More (...)]
+        // Hidden in landscape mode so the horizontal player remains unobstructed
+        if (!isLandscape) {
+            Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 18.dp, vertical = 8.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
+                    .statusBarsPadding()
             ) {
-                // Left: "Skim" refresh button
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(12.dp))
-                        .clickable { skimViewModel.refreshFeed() }
-                        .padding(horizontal = 6.dp, vertical = 4.dp)
-                ) {
-                    Text(
-                        text = "Skim",
-                        fontFamily = DinProFamily,
-                        fontSize = 20.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = Color.White
-                    )
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Icon(
-                        imageVector = Icons.Default.Refresh,
-                        contentDescription = "Refresh",
-                        tint = RessoAccent,
-                        modifier = Modifier
-                            .size(16.dp)
-                            .graphicsLayer {
-                                rotationZ = if (isRefreshing) refreshRotation else 0f
-                            }
-                    )
-                }
-
-                // Center: "For You" | "Explore" | "Moods" Tab Toggle
                 Row(
                     modifier = Modifier
-                        .clip(RoundedCornerShape(20.dp))
-                        .background(Color(0x33000000))
-                        .padding(horizontal = 4.dp, vertical = 3.dp),
+                        .fillMaxWidth()
+                        .padding(horizontal = 18.dp, vertical = 8.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    // "For You"
-                    val forYouSelected = skimTab == SkimTab.FOR_YOU
-                    Box(
+                    // Left: "Skim" refresh button
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
                         modifier = Modifier
-                            .clip(RoundedCornerShape(16.dp))
-                            .background(if (forYouSelected) Color(0x44FFFFFF) else Color.Transparent)
-                            .clickable { skimViewModel.selectSkimTab(SkimTab.FOR_YOU) }
-                            .padding(horizontal = 10.dp, vertical = 5.dp),
-                        contentAlignment = Alignment.Center
+                            .clip(RoundedCornerShape(12.dp))
+                            .clickable { skimViewModel.refreshFeed() }
+                            .padding(horizontal = 6.dp, vertical = 4.dp)
                     ) {
                         Text(
-                            text = "For You",
+                            text = "Skim",
                             fontFamily = DinProFamily,
-                            fontSize = 13.sp,
-                            fontWeight = if (forYouSelected) FontWeight.Bold else FontWeight.Medium,
-                            color = if (forYouSelected) Color.White else Color(0x88FFFFFF)
+                            fontSize = 20.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color.White
+                        )
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Icon(
+                            imageVector = Icons.Default.Refresh,
+                            contentDescription = "Refresh",
+                            tint = RessoAccent,
+                            modifier = Modifier
+                                .size(16.dp)
+                                .graphicsLayer {
+                                    rotationZ = if (isRefreshing) refreshRotation else 0f
+                                }
                         )
                     }
 
-                    // "Explore"
-                    val exploreSelected = skimTab == SkimTab.EXPLORE
-                    Box(
+                    // Center: "For You" | "Explore" | "Moods" Tab Toggle
+                    Row(
                         modifier = Modifier
-                            .clip(RoundedCornerShape(16.dp))
-                            .background(if (exploreSelected) Color(0x44FFFFFF) else Color.Transparent)
-                            .clickable { skimViewModel.selectSkimTab(SkimTab.EXPLORE) }
-                            .padding(horizontal = 10.dp, vertical = 5.dp),
-                        contentAlignment = Alignment.Center
+                            .clip(RoundedCornerShape(20.dp))
+                            .background(Color(0x33000000))
+                            .padding(horizontal = 4.dp, vertical = 3.dp),
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Text(
-                            text = "Explore",
-                            fontFamily = DinProFamily,
-                            fontSize = 13.sp,
-                            fontWeight = if (exploreSelected) FontWeight.Bold else FontWeight.Medium,
-                            color = if (exploreSelected) Color.White else Color(0x88FFFFFF)
-                        )
+                        // "For You"
+                        val forYouSelected = skimTab == SkimTab.FOR_YOU
+                        Box(
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(16.dp))
+                                .background(if (forYouSelected) Color(0x44FFFFFF) else Color.Transparent)
+                                .clickable { skimViewModel.selectSkimTab(SkimTab.FOR_YOU) }
+                                .padding(horizontal = 10.dp, vertical = 5.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = "For You",
+                                fontFamily = DinProFamily,
+                                fontSize = 13.sp,
+                                fontWeight = if (forYouSelected) FontWeight.Bold else FontWeight.Medium,
+                                color = if (forYouSelected) Color.White else Color(0x88FFFFFF)
+                            )
+                        }
+
+                        // "Explore"
+                        val exploreSelected = skimTab == SkimTab.EXPLORE
+                        Box(
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(16.dp))
+                                .background(if (exploreSelected) Color(0x44FFFFFF) else Color.Transparent)
+                                .clickable { skimViewModel.selectSkimTab(SkimTab.EXPLORE) }
+                                .padding(horizontal = 10.dp, vertical = 5.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = "Explore",
+                                fontFamily = DinProFamily,
+                                fontSize = 13.sp,
+                                fontWeight = if (exploreSelected) FontWeight.Bold else FontWeight.Medium,
+                                color = if (exploreSelected) Color.White else Color(0x88FFFFFF)
+                            )
+                        }
+
+                        // "Moods"
+                        val moodsSelected = skimTab == SkimTab.MOODS
+                        Box(
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(16.dp))
+                                .background(if (moodsSelected) Color(0x44FFFFFF) else Color.Transparent)
+                                .clickable { skimViewModel.selectSkimTab(SkimTab.MOODS) }
+                                .padding(horizontal = 10.dp, vertical = 5.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = "Moods",
+                                fontFamily = DinProFamily,
+                                fontSize = 13.sp,
+                                fontWeight = if (moodsSelected) FontWeight.Bold else FontWeight.Medium,
+                                color = if (moodsSelected) Color.White else Color(0x88FFFFFF)
+                            )
+                        }
                     }
 
-                    // "Moods"
-                    val moodsSelected = skimTab == SkimTab.MOODS
-                    Box(
-                        modifier = Modifier
-                            .clip(RoundedCornerShape(16.dp))
-                            .background(if (moodsSelected) Color(0x44FFFFFF) else Color.Transparent)
-                            .clickable { skimViewModel.selectSkimTab(SkimTab.MOODS) }
-                            .padding(horizontal = 10.dp, vertical = 5.dp),
-                        contentAlignment = Alignment.Center
+                    // Right: Options Menu
+                    IconButton(
+                        onClick = { showMoreMenuSheet = true },
+                        modifier = Modifier.size(36.dp)
                     ) {
-                        Text(
-                            text = "Moods",
-                            fontFamily = DinProFamily,
-                            fontSize = 13.sp,
-                            fontWeight = if (moodsSelected) FontWeight.Bold else FontWeight.Medium,
-                            color = if (moodsSelected) Color.White else Color(0x88FFFFFF)
+                        Icon(
+                            imageVector = Icons.Default.MoreVert,
+                            contentDescription = "Options",
+                            tint = Color(0xCCFFFFFF),
+                            modifier = Modifier.size(22.dp)
                         )
                     }
-                }
-
-                // Right: Options Menu
-                IconButton(
-                    onClick = { showMoreMenuSheet = true },
-                    modifier = Modifier.size(36.dp)
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.MoreVert,
-                        contentDescription = "Options",
-                        tint = Color(0xCCFFFFFF),
-                        modifier = Modifier.size(22.dp)
-                    )
                 }
             }
         }
@@ -585,12 +589,32 @@ fun SkimScreen(
                         fontWeight = FontWeight.Bold,
                         color = Color.White
                     )
-                    IconButton(onClick = { showQueueSheet = false }) {
-                        Icon(
-                            imageVector = Icons.Default.Close,
-                            contentDescription = "Close",
-                            tint = Color.White
-                        )
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        TextButton(
+                            onClick = { skimViewModel.refreshQueue() }
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Refresh,
+                                contentDescription = "Reset Queue",
+                                tint = RessoAccent,
+                                modifier = Modifier.size(18.dp)
+                            )
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text(
+                                text = "Refresh",
+                                fontFamily = DinProFamily,
+                                fontSize = 13.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                color = RessoAccent
+                            )
+                        }
+                        IconButton(onClick = { showQueueSheet = false }) {
+                            Icon(
+                                imageVector = Icons.Default.Close,
+                                contentDescription = "Close",
+                                tint = Color.White
+                            )
+                        }
                     }
                 }
 

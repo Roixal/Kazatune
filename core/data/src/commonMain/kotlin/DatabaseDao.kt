@@ -209,8 +209,8 @@ interface DatabaseDao {
         return a
     }
 
-    // Get search history
-    @Query("SELECT * FROM search_history")
+    // Get search history (most recent first)
+    @Query("SELECT * FROM search_history ORDER BY rowid DESC")
     suspend fun getSearchHistory(): List<SearchHistory>
 
     @Query("DELETE FROM search_history")

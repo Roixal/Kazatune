@@ -156,7 +156,10 @@ class SettingsViewModel(
     fun saveLastfmSession(sessionKey: String, username: String) {
         viewModelScope.launch(Dispatchers.IO) {
             dataStoreManager.setLastfmSession(sessionKey.trim(), username.trim())
+            dataStoreManager.setLastfmScrobbleEnabled(true)
+            dataStoreManager.setLocalTrackingEnabled(true)
             _lastfmUsername.value = username.trim()
+            _lastfmScrobbleEnabled.value = true
         }
     }
 

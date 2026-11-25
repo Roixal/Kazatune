@@ -173,11 +173,10 @@ internal class StreamRepositoryImpl(
                             ?: formatList.find { !it.isAudio && it.url.isNullOrEmpty().not() }
                     val audioTwinItag = ITAG.highQualityTwinOf(itag)
                     val audioFormat =
-                        formatList.find { it.itag == itag } ?: if (audioTwinItag != null) {
-                            formatList.find { it.itag == audioTwinItag }
-                        } else {
-                            formatList.find { it.isAudio && it.url.isNullOrEmpty().not() }
-                        }
+                        formatList.find { it.itag == itag }
+                            ?: audioTwinItag?.let { twin -> formatList.find { it.itag == twin } }
+                            ?: formatList.filter { it.isAudio && it.url.isNullOrEmpty().not() }
+                                .maxByOrNull { it.bitrate }
                     var format =
                         if (isVideo) {
                             videoFormat

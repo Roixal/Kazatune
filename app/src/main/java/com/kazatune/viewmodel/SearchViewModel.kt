@@ -141,8 +141,10 @@ class SearchViewModel(
         _suggestions.value = emptyList()
 
         viewModelScope.launch(Dispatchers.IO) {
-            // Save to search history
-            searchRepository.insertSearchHistory(SearchHistory(q)).collect {}
+            // Save to search history and put most recent at top
+            val entry = SearchHistory(q)
+            searchRepository.insertSearchHistory(entry).collect {}
+            _searchHistory.value = listOf(entry) + _searchHistory.value.filter { it.query != q }
 
             when (_selectedCategory.value) {
                 SearchCategory.SONGS -> {

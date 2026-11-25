@@ -2,6 +2,9 @@ package com.kazatune.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.kazatune.mix.PairTransition
+import com.kazatune.mix.PlaylistMixManager
+import com.kazatune.mix.PlaylistMixSettings
 import com.maxrave.domain.data.entities.DownloadState
 import com.maxrave.domain.data.entities.LocalPlaylistEntity
 import com.maxrave.domain.data.entities.SongEntity
@@ -9,19 +12,28 @@ import com.maxrave.domain.data.model.browse.album.Track
 import com.maxrave.domain.data.model.searchResult.playlists.PlaylistsResult
 import com.maxrave.domain.data.model.streams.YouTubeWatchEndpoint
 import com.maxrave.domain.extension.toGenericMediaItem
+import com.maxrave.domain.manager.DataStoreManager
 import com.maxrave.domain.mediaservice.handler.DownloadHandler
 import com.maxrave.domain.mediaservice.handler.MediaPlayerHandler
 import com.maxrave.domain.repository.LocalPlaylistRepository
 import com.maxrave.domain.repository.PlaylistRepository
 import com.maxrave.domain.repository.SongRepository
+import com.maxrave.domain.repository.StreamRepository
 import com.maxrave.domain.utils.Resource
 import com.maxrave.domain.utils.toTrack
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+
+data class TrackAudioMeta(
+    val bpm: Int? = null,
+    val musicalKey: String? = null,
+    val camelotCode: String? = null
+)
 
 enum class LibraryTab {
     ALL, LIKED, DOWNLOADS, PLAYLISTS
@@ -32,7 +44,10 @@ class LibraryViewModel(
     private val localPlaylistRepository: LocalPlaylistRepository,
     private val playlistRepository: PlaylistRepository,
     private val mediaPlayerHandler: MediaPlayerHandler,
-    private val downloadHandler: DownloadHandler
+    private val downloadHandler: DownloadHandler,
+    private val dataStoreManager: DataStoreManager,
+    private val streamRepository: StreamRepository,
+    private val playlistMixManager: PlaylistMixManager
 ) : ViewModel() {
 
     private val _selectedTab = MutableStateFlow(LibraryTab.ALL)
@@ -57,6 +72,12 @@ class LibraryViewModel(
     // Dedicated Downloads Section Banner
     private val _isDownloadedSongsBannerOpen = MutableStateFlow(false)
     val isDownloadedSongsBannerOpen: StateFlow<Boolean> = _isDownloadedSongsBannerOpen.asStateFlow()
+
+    // Spotify-style Playlist Mix configurations & track BPM/Camelot metadata
+    val mixConfigs: StateFlow<Map<String, PlaylistMixSettings>> = playlistMixManager.mixConfigs
+
+    private val _trackAudioMeta = MutableStateFlow<Map<String, TrackAudioMeta>>(emptyMap())
+    val trackAudioMeta: StateFlow<Map<String, TrackAudioMeta>> = _trackAudioMeta.asStateFlow()
 
     init {
         observeData()
@@ -209,6 +230,7 @@ class LibraryViewModel(
 
                 loadedTracks?.let { tracks ->
                     if (tracks.isNotEmpty()) {
+                        applyMixSettingsForTracks("yt_${playlist.browseId}", tracks)
                         withContext(Dispatchers.Main) {
                             onTracksLoaded(tracks)
                         }
@@ -227,8 +249,10 @@ class LibraryViewModel(
             try {
                 songRepository.getSongsByListVideoId(trackIds).collect { songs ->
                     if (songs.isNotEmpty()) {
+                        val tracks = songs.map { it.toTrack() }
+                        applyMixSettingsForTracks("local_${playlist.id}", tracks)
                         withContext(Dispatchers.Main) {
-                            onTracksLoaded(songs.map { it.toTrack() })
+                            onTracksLoaded(tracks)
                         }
                     }
                 }
@@ -236,5 +260,96 @@ class LibraryViewModel(
                 e.printStackTrace()
             }
         }
+    }
+
+    fun getLocalPlaylistTracks(playlist: LocalPlaylistEntity, onLoaded: (List<Track>) -> Unit) {
+        val trackIds = playlist.tracks.orEmpty()
+        if (trackIds.isEmpty()) {
+            onLoaded(emptyList())
+            return
+        }
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                val songs = songRepository.getSongsByListVideoId(trackIds).firstOrNull().orEmpty()
+                val tracks = songs.map { it.toTrack() }
+                loadMixTrackMetadata(tracks)
+                withContext(Dispatchers.Main) {
+                    onLoaded(tracks)
+                }
+            } catch (e: Exception) {
+                e.printStackTrace()
+                withContext(Dispatchers.Main) {
+                    onLoaded(emptyList())
+                }
+            }
+        }
+    }
+
+    fun togglePlaylistMix(playlistId: String) {
+        val updated = playlistMixManager.toggleMix(playlistId)
+        viewModelScope.launch(Dispatchers.IO) {
+            if (playlistMixManager.activeMixPlaylistId.value == playlistId) {
+                playlistMixManager.applyMixForPlayback(playlistId, dataStoreManager)
+            } else if (updated.mixEnabled) {
+                playlistMixManager.applyMixForPlayback(playlistId, dataStoreManager)
+            }
+        }
+    }
+
+    fun updatePlaylistMix(settings: PlaylistMixSettings) {
+        playlistMixManager.saveSettings(settings)
+        viewModelScope.launch(Dispatchers.IO) {
+            if (settings.mixEnabled || playlistMixManager.activeMixPlaylistId.value == settings.playlistId) {
+                playlistMixManager.applyMixForPlayback(settings.playlistId, dataStoreManager)
+            }
+        }
+    }
+
+    fun setPairTransition(
+        playlistId: String,
+        fromVideoId: String,
+        toVideoId: String,
+        transition: PairTransition
+    ) {
+        playlistMixManager.setPairTransition(playlistId, fromVideoId, toVideoId, transition)
+    }
+
+    fun applyMixSettingsForTracks(playlistId: String, tracks: List<Track>) {
+        viewModelScope.launch(Dispatchers.IO) {
+            val firstId = tracks.getOrNull(0)?.videoId
+            val secondId = tracks.getOrNull(1)?.videoId
+            playlistMixManager.applyMixForPlayback(
+                playlistId = playlistId,
+                dataStoreManager = dataStoreManager,
+                fromVideoId = firstId,
+                toVideoId = secondId
+            )
+        }
+    }
+
+    fun loadMixTrackMetadata(tracks: List<Track>) {
+        if (tracks.isEmpty()) return
+        viewModelScope.launch(Dispatchers.IO) {
+            val currentMap = _trackAudioMeta.value.toMutableMap()
+            tracks.forEach { track ->
+                if (!currentMap.containsKey(track.videoId)) {
+                    runCatching {
+                        val fmt = streamRepository.getNewFormat(track.videoId).firstOrNull()
+                        if (fmt != null && (fmt.bpm != null || fmt.musicKey != null)) {
+                            currentMap[track.videoId] = TrackAudioMeta(
+                                bpm = fmt.bpm,
+                                musicalKey = fmt.musicKey,
+                                camelotCode = PlaylistMixManager.toCamelotCode(fmt.musicKey, fmt.keyScale)
+                            )
+                        }
+                    }
+                }
+            }
+            _trackAudioMeta.value = currentMap
+        }
+    }
+
+    fun exportMixedPlaylist(title: String, tracks: List<Track>, playlistId: String): String {
+        return playlistMixManager.exportMixedPlaylistJson(title, tracks, playlistId)
     }
 }

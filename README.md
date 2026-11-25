@@ -52,11 +52,11 @@ Get the latest stable release directly from GitHub Releases:
 
 <p align="center">
   <a href="https://github.com/Roixal/Kazatune/releases/latest">
-    <img src="https://img.shields.io/badge/DOWNLOAD_LATEST_APK-v1.0.2-FF0050?style=for-the-badge&logo=android&logoColor=white" height="44" alt="Download APK" />
+    <img src="https://img.shields.io/badge/DOWNLOAD_LATEST_APK-v1.0.3-FF0050?style=for-the-badge&logo=android&logoColor=white" height="44" alt="Download APK" />
   </a>
 </p>
 
-1. Download **`SkimMusic-v1.0.2.apk`** from [GitHub Releases](https://github.com/Roixal/Kazatune/releases/latest).
+1. Download **`SkimMusic-v1.0.3.apk`** from [GitHub Releases](https://github.com/Roixal/Kazatune/releases/latest).
 2. Tap the file to install (*Allow installation from unknown sources* if prompted).
 3. Open Skim Music and stream high-quality music without ads or subscriptions!
 
