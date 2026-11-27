@@ -1,5 +1,6 @@
 package com.kazatune.ui.component
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -22,6 +23,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.PlaylistAdd
 import androidx.compose.material.icons.automirrored.filled.QueueMusic
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -154,6 +156,51 @@ fun AddToPlaylistBottomSheet(
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     var showInlineCreate by remember { mutableStateOf(false) }
     var newPlaylistName by remember { mutableStateOf("") }
+    var duplicateTargetPlaylist by remember { mutableStateOf<LocalPlaylistEntity?>(null) }
+
+    if (duplicateTargetPlaylist != null) {
+        val target = duplicateTargetPlaylist!!
+        AlertDialog(
+            onDismissRequest = { duplicateTargetPlaylist = null },
+            containerColor = Color(0xFF1E1D24),
+            shape = RoundedCornerShape(20.dp),
+            title = {
+                Text(
+                    text = "Already in Playlist",
+                    fontFamily = DinProFamily,
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Color.White
+                )
+            },
+            text = {
+                Text(
+                    text = "\"${track.title}\" is already in \"${target.title}\". Add another copy anyway?",
+                    fontFamily = DinProFamily,
+                    fontSize = 14.sp,
+                    color = Color(0xCCFFFFFF)
+                )
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        onSelectPlaylist(target)
+                        duplicateTargetPlaylist = null
+                        onDismissRequest()
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = RessoAccent),
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    Text("Add Anyway", fontFamily = DinProFamily, fontWeight = FontWeight.Bold)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { duplicateTargetPlaylist = null }) {
+                    Text("Cancel", fontFamily = DinProFamily, color = Color(0xAAFFFFFF))
+                }
+            }
+        )
+    }
 
     ModalBottomSheet(
         onDismissRequest = onDismissRequest,
@@ -345,14 +392,20 @@ fun AddToPlaylistBottomSheet(
                 ) {
                     items(playlists) { playlist ->
                         val count = playlist.tracks?.size ?: 0
+                        val isAlreadyInPlaylist = playlist.tracks?.contains(track.videoId) == true
                         Surface(
                             shape = RoundedCornerShape(14.dp),
                             color = Color(0xFF1A1922),
+                            border = if (isAlreadyInPlaylist) BorderStroke(1.dp, Color(0x3300E5FF)) else null,
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .clickable {
-                                    onSelectPlaylist(playlist)
-                                    onDismissRequest()
+                                    if (isAlreadyInPlaylist) {
+                                        duplicateTargetPlaylist = playlist
+                                    } else {
+                                        onSelectPlaylist(playlist)
+                                        onDismissRequest()
+                                    }
                                 }
                         ) {
                             Row(
@@ -369,7 +422,7 @@ fun AddToPlaylistBottomSheet(
                                     Icon(
                                         imageVector = Icons.AutoMirrored.Filled.QueueMusic,
                                         contentDescription = null,
-                                        tint = Color.White,
+                                        tint = if (isAlreadyInPlaylist) Color(0xFF00E5FF) else Color.White,
                                         modifier = Modifier.size(20.dp)
                                     )
                                 }
@@ -390,6 +443,33 @@ fun AddToPlaylistBottomSheet(
                                         fontSize = 12.sp,
                                         color = Color(0x88FFFFFF)
                                     )
+                                }
+
+                                if (isAlreadyInPlaylist) {
+                                    Surface(
+                                        shape = RoundedCornerShape(8.dp),
+                                        color = Color(0x1F00E5FF)
+                                    ) {
+                                        Row(
+                                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                                            verticalAlignment = Alignment.CenterVertically
+                                        ) {
+                                            Icon(
+                                                imageVector = Icons.Default.Check,
+                                                contentDescription = null,
+                                                tint = Color(0xFF00E5FF),
+                                                modifier = Modifier.size(12.dp)
+                                            )
+                                            Spacer(modifier = Modifier.width(4.dp))
+                                            Text(
+                                                text = "Added",
+                                                fontFamily = DinProFamily,
+                                                fontSize = 11.sp,
+                                                fontWeight = FontWeight.Bold,
+                                                color = Color(0xFF00E5FF)
+                                            )
+                                        }
+                                    }
                                 }
                             }
                         }

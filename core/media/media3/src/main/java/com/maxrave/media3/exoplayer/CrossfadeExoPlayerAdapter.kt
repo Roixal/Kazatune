@@ -402,6 +402,9 @@ internal class CrossfadeExoPlayerAdapter(
      * Update crossfade state and notify listeners when it changes.
      */
     private fun setCrossfading(value: Boolean) {
+        if (!value) {
+            com.maxrave.domain.mediaservice.handler.DjTransitionStateHolder.reset()
+        }
         if (isCrossfading != value) {
             isCrossfading = value
             listeners.forEach { it.onCrossfadeStateChanged(value) }
@@ -2247,7 +2250,15 @@ internal class CrossfadeExoPlayerAdapter(
                 //    onMediaItemTransition events (they fire before its listener is attached).
                 forwardingPlayer.swapDelegate(nextPlayer)
 
-                // 2. Now play - MediaSession's listener is attached and receives state change events
+                // 2. Wait briefly for incoming player to buffer if not yet READY so both songs
+                // genuinely overlap from step 0 of the transition
+                var waitMs = 0L
+                while (nextPlayer.playbackState == Player.STATE_BUFFERING && waitMs < 4000L) {
+                    delay(50)
+                    waitMs += 50
+                }
+
+                // 3. Now play - MediaSession's listener is attached and receives state change events
                 requestAudioFocusInternal()
                 nextPlayer.play()
 
@@ -2262,6 +2273,11 @@ internal class CrossfadeExoPlayerAdapter(
 
                 // Capture current video ID BEFORE advancing localCurrentMediaItemIndex
                 val currentVideoId = playlist.getOrNull(localCurrentMediaItemIndex)?.mediaId ?: ""
+                com.maxrave.domain.mediaservice.handler.DjTransitionStateHolder.start(
+                    outgoingMediaId = currentVideoId,
+                    incomingMediaId = nextVideoId,
+                    djMode = djCrossfadeEnabled,
+                )
 
                 // Lazily load AutoMix metadata from NewFormatEntity if not in cache
                 val isAutoMode = crossfadeDurationMs == DataStoreManager.CROSSFADE_DURATION_AUTO
@@ -2424,6 +2440,7 @@ internal class CrossfadeExoPlayerAdapter(
                         if (!isActive) break
 
                         val progress = step.toFloat() / steps
+                        com.maxrave.domain.mediaservice.handler.DjTransitionStateHolder.updateProgress(progress)
 
                         // Equal-power crossfade (cos/sin curves) instead of linear.
                         // Human loudness perception is logarithmic — linear volume fade makes
@@ -3051,9 +3068,9 @@ internal class CrossfadeExoPlayerAdapter(
                                     val timeRemaining = ((dur - pos) / speed).toLong()
                                     val nextVideoId = playlist.getOrNull(getNextMediaItemIndex())?.mediaId
                                     val isPrecached = nextVideoId != null && precachedPlayers.containsKey(nextVideoId)
-                                    // If next track is precached, trigger at exactly crossfadeDurationMs.
-                                    // If NOT precached, trigger 3s earlier to allow preparation time.
-                                    val preparationBufferMs = if (isPrecached) 0L else 3000L
+                                    // If next track is precached, trigger 1.5s earlier so fade finishes before track end.
+                                    // If NOT precached, trigger 6s earlier to absorb URL resolution & buffering.
+                                    val preparationBufferMs = if (isPrecached) 1500L else 6000L
                                     // In Auto mode, calculate beat-quantized duration for trigger threshold.
                                     val resolvedDurationMs =
                                         if (crossfadeDurationMs == DataStoreManager.CROSSFADE_DURATION_AUTO) {
@@ -3061,7 +3078,7 @@ internal class CrossfadeExoPlayerAdapter(
                                             resolveAutoCrossfadeDurationMs(currentVideoId, nextVideoId ?: "")
                                         } else {
                                             crossfadeDurationMs
-                                        }
+                                        }.coerceAtLeast(4000)
                                     val triggerThreshold = resolvedDurationMs.toLong() + preparationBufferMs
                                     if (timeRemaining in 1..triggerThreshold) {
                                         if (hasNextMediaItem()) {

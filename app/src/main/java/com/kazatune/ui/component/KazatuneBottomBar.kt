@@ -37,6 +37,7 @@ import com.kazatune.ui.theme.LiquidGlassColors
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.kazatune.ui.theme.DinProFamily
+import com.kazatune.ui.theme.RessoAccent
 
 enum class MainTab(val title: String, val icon: ImageVector) {
     SKIM("Skim", Icons.Default.PlayCircle),
@@ -77,7 +78,7 @@ fun SkimMusicBottomBar(
             MainTab.entries.forEach { tab ->
                 val isSelected = tab == currentTab
                 val itemColor by animateColorAsState(
-                    targetValue = if (isSelected) Color(0xFFFF3366) else Color(0x80FFFFFF),
+                    targetValue = if (isSelected) RessoAccent else Color(0x80FFFFFF),
                     label = "TabColor"
                 )
 
@@ -112,10 +113,3 @@ fun SkimMusicBottomBar(
         }
     }
 }
-
-@Composable
-fun KazatuneBottomBar(
-    currentTab: MainTab,
-    onTabSelected: (MainTab) -> Unit,
-    modifier: Modifier = Modifier
-) = SkimMusicBottomBar(currentTab, onTabSelected, modifier)

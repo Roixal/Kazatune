@@ -4,25 +4,21 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.runtime.Composable
 
-private val DarkColorScheme = darkColorScheme(
-    primary = RessoAccentRed,
-    secondary = RessoAccentCyan,
-    background = RessoBlack,
-    surface = RessoDarkSurface,
-    onPrimary = RessoWhite,
-    onSecondary = RessoBlack,
-    onBackground = RessoWhite,
-    onSurface = RessoWhite
-)
-
 @Composable
 fun SkimMusicTheme(content: @Composable () -> Unit) {
+    val colorScheme = darkColorScheme(
+        primary = RessoAccent,
+        secondary = RessoAccentCyan,
+        background = RessoBlack,
+        surface = RessoDarkSurface,
+        onPrimary = if (RessoAccent == RessoWhite) RessoBlack else RessoWhite,
+        onSecondary = RessoBlack,
+        onBackground = RessoWhite,
+        onSurface = RessoWhite
+    )
     MaterialTheme(
-        colorScheme = DarkColorScheme,
+        colorScheme = colorScheme,
         typography = RessoTypography,
         content = content
     )
 }
-
-@Composable
-fun KazatuneTheme(content: @Composable () -> Unit) = SkimMusicTheme(content)

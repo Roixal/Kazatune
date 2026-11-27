@@ -1,5 +1,6 @@
 package com.kazatune.ui.settings
 
+import com.kazatune.ui.component.EqualizerBottomSheet
 import com.kazatune.ui.component.SleepTimerBottomSheet
 
 import android.content.Intent
@@ -13,7 +14,10 @@ import android.webkit.CookieManager
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -39,6 +43,7 @@ import androidx.compose.material.icons.automirrored.filled.VolumeUp
 import androidx.compose.material.icons.filled.AccountCircle
 import androidx.compose.material.icons.filled.AvTimer
 import androidx.compose.material.icons.filled.Bolt
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.CleaningServices
 import androidx.compose.material.icons.filled.Close
@@ -84,6 +89,8 @@ import androidx.compose.ui.viewinterop.AndroidView
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.kazatune.ui.theme.AccentColorPresets
+import com.kazatune.ui.theme.AppAccentState
 import com.kazatune.ui.theme.DinProFamily
 import com.kazatune.ui.theme.RessoAccent
 import com.kazatune.viewmodel.SettingsViewModel
@@ -107,12 +114,31 @@ fun SettingsScreen(
     val crossfadeEnabled by settingsViewModel.crossfadeEnabled.collectAsStateWithLifecycle()
     val crossfadeDuration by settingsViewModel.crossfadeDuration.collectAsStateWithLifecycle()
     val crossfadeDjMode by settingsViewModel.crossfadeDjMode.collectAsStateWithLifecycle()
+    val equalizerEnabled by settingsViewModel.equalizerEnabled.collectAsStateWithLifecycle()
+    val equalizerPreset by settingsViewModel.equalizerPreset.collectAsStateWithLifecycle()
+    val equalizerBands by settingsViewModel.equalizerBands.collectAsStateWithLifecycle()
+    val equalizerBassBoost by settingsViewModel.equalizerBassBoost.collectAsStateWithLifecycle()
     val isAutoUpdateEnabled by updateViewModel.isAutoUpdateEnabled.collectAsStateWithLifecycle()
 
     val context = LocalContext.current
 
     var showAboutScreen by remember { mutableStateOf(false) }
     var showSleepTimerSheet by remember { mutableStateOf(false) }
+    var showEqualizerSheet by remember { mutableStateOf(false) }
+
+    if (showEqualizerSheet) {
+        EqualizerBottomSheet(
+            enabled = equalizerEnabled,
+            activePreset = equalizerPreset,
+            bandsDb = equalizerBands,
+            bassBoostStrength = equalizerBassBoost,
+            onToggleEnabled = { settingsViewModel.setEqualizerEnabled(it) },
+            onSelectPreset = { settingsViewModel.selectEqualizerPreset(it) },
+            onBandChange = { idx, gain -> settingsViewModel.setEqualizerBand(idx, gain) },
+            onBassBoostChange = { settingsViewModel.setBassBoost(it) },
+            onDismissRequest = { showEqualizerSheet = false }
+        )
+    }
 
     if (showSleepTimerSheet) {
         SleepTimerBottomSheet(
@@ -160,9 +186,107 @@ fun SettingsScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .weight(1f),
-            contentPadding = PaddingValues(start = 20.dp, end = 20.dp, top = 12.dp, bottom = 120.dp),
+            contentPadding = PaddingValues(start = 20.dp, end = 20.dp, top = 12.dp, bottom = 190.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
+            // Section: Appearance & UI Color
+            item {
+                SettingsSectionHeader("Appearance")
+            }
+
+            item {
+                val activeAccent = RessoAccent
+                Surface(
+                    shape = RoundedCornerShape(12.dp),
+                    color = Color(0xFF181720),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Column(modifier = Modifier.padding(16.dp)) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Column {
+                                Text(
+                                    text = "UI Accent Color",
+                                    fontFamily = DinProFamily,
+                                    fontSize = 16.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color.White
+                                )
+                                val activeName = AccentColorPresets.firstOrNull { it.color == activeAccent }?.name ?: "Custom"
+                                Text(
+                                    text = activeName,
+                                    fontFamily = DinProFamily,
+                                    fontSize = 12.sp,
+                                    color = activeAccent
+                                )
+                            }
+                            Box(
+                                modifier = Modifier
+                                    .size(26.dp)
+                                    .clip(CircleShape)
+                                    .background(activeAccent)
+                                    .border(2.dp, Color.White, CircleShape)
+                            )
+                        }
+
+                        Spacer(modifier = Modifier.height(14.dp))
+
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .horizontalScroll(rememberScrollState()),
+                            horizontalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            AccentColorPresets.forEach { option ->
+                                val isSelected = option.color == activeAccent
+                                Column(
+                                    horizontalAlignment = Alignment.CenterHorizontally,
+                                    modifier = Modifier
+                                        .clip(RoundedCornerShape(10.dp))
+                                        .clickable {
+                                            AppAccentState.setAccentColor(context, option.color)
+                                        }
+                                        .padding(horizontal = 4.dp, vertical = 4.dp)
+                                ) {
+                                    Box(
+                                        modifier = Modifier
+                                            .size(38.dp)
+                                            .clip(CircleShape)
+                                            .background(option.color)
+                                            .border(
+                                                width = if (isSelected) 2.5.dp else 1.dp,
+                                                color = if (isSelected) Color.White else Color(0x33FFFFFF),
+                                                shape = CircleShape
+                                            ),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        if (isSelected) {
+                                            Icon(
+                                                imageVector = Icons.Default.Check,
+                                                contentDescription = "Selected",
+                                                tint = if (option.color == Color(0xFFFFFFFF)) Color.Black else Color.White,
+                                                modifier = Modifier.size(18.dp)
+                                            )
+                                        }
+                                    }
+                                    Spacer(modifier = Modifier.height(4.dp))
+                                    Text(
+                                        text = option.name.substringAfter(" "),
+                                        fontFamily = DinProFamily,
+                                        fontSize = 10.sp,
+                                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+                                        color = if (isSelected) Color.White else Color(0x88FFFFFF)
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
             // Section: YouTube Music Account
             item {
                 SettingsSectionHeader("Account & Library Sync")
@@ -379,6 +503,31 @@ fun SettingsScreen(
                     subtitle = "Apply low-pass & high-pass sweeps during crossfades",
                     checked = crossfadeDjMode,
                     onCheckedChange = { settingsViewModel.toggleCrossfadeDjMode(it) }
+                )
+            }
+
+            item {
+                SettingsSwitchCard(
+                    icon = Icons.Default.Wallpaper,
+                    title = "DJ Transition Animation",
+                    subtitle = "Show full-screen paint-mix album animation while DJ mixing",
+                    checked = AppAccentState.djMixAnimationEnabled,
+                    onCheckedChange = { AppAccentState.setDjMixAnimationEnabled(context, it) }
+                )
+            }
+
+            // Section: Equalizer & Sound Effects
+            item {
+                Spacer(modifier = Modifier.height(4.dp))
+                SettingsSectionHeader("Equalizer & Sound Effects")
+            }
+
+            item {
+                SettingsItemCard(
+                    icon = Icons.Default.GraphicEq,
+                    title = "10-Band Studio Equalizer",
+                    subtitle = if (equalizerEnabled) "Active • Preset: $equalizerPreset" else "Bypassed (Flat)",
+                    onClick = { showEqualizerSheet = true }
                 )
             }
 
@@ -1270,7 +1419,7 @@ fun AboutScreen(
 
         LazyColumn(
             modifier = Modifier.fillMaxSize(),
-            contentPadding = PaddingValues(start = 20.dp, end = 20.dp, top = 8.dp, bottom = 120.dp),
+            contentPadding = PaddingValues(start = 20.dp, end = 20.dp, top = 8.dp, bottom = 190.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             // Hero Card

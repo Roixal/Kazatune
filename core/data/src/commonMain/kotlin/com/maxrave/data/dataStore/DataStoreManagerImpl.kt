@@ -872,6 +872,59 @@ internal class DataStoreManagerImpl(
         }
     }
 
+    override val blacklistedTrackIds: Flow<Set<String>> =
+        settingsDataStore.data.map { preferences ->
+            preferences[BLACKLISTED_TRACKS]?.split(",")?.filter { it.isNotBlank() }?.toSet() ?: emptySet()
+        }
+
+    override suspend fun blacklistTrack(videoId: String) {
+        if (videoId.isBlank()) return
+        withContext(Dispatchers.IO) {
+            settingsDataStore.edit { settings ->
+                val current = settings[BLACKLISTED_TRACKS]?.split(",")?.filter { it.isNotBlank() }?.toMutableSet() ?: mutableSetOf()
+                current.add(videoId)
+                settings[BLACKLISTED_TRACKS] = current.joinToString(",")
+            }
+        }
+    }
+
+    override suspend fun unblacklistTrack(videoId: String) {
+        withContext(Dispatchers.IO) {
+            settingsDataStore.edit { settings ->
+                val current = settings[BLACKLISTED_TRACKS]?.split(",")?.filter { it.isNotBlank() }?.toMutableSet() ?: mutableSetOf()
+                current.remove(videoId)
+                settings[BLACKLISTED_TRACKS] = current.joinToString(",")
+            }
+        }
+    }
+
+    override val blacklistedArtists: Flow<Set<String>> =
+        settingsDataStore.data.map { preferences ->
+            preferences[BLACKLISTED_ARTISTS]?.split("|||")?.filter { it.isNotBlank() }?.toSet() ?: emptySet()
+        }
+
+    override suspend fun blacklistArtist(artistName: String) {
+        val trimmed = artistName.trim()
+        if (trimmed.isBlank()) return
+        withContext(Dispatchers.IO) {
+            settingsDataStore.edit { settings ->
+                val current = settings[BLACKLISTED_ARTISTS]?.split("|||")?.filter { it.isNotBlank() }?.toMutableSet() ?: mutableSetOf()
+                current.add(trimmed)
+                settings[BLACKLISTED_ARTISTS] = current.joinToString("|||")
+            }
+        }
+    }
+
+    override suspend fun unblacklistArtist(artistName: String) {
+        withContext(Dispatchers.IO) {
+            settingsDataStore.edit { settings ->
+                val current = settings[BLACKLISTED_ARTISTS]?.split("|||")?.filter { it.isNotBlank() }?.toMutableSet() ?: mutableSetOf()
+                current.remove(artistName.trim())
+                settings[BLACKLISTED_ARTISTS] = current.joinToString("|||")
+            }
+        }
+    }
+
     override val tidalClientSecret: Flow<String> =
         settingsDataStore.data.map { preferences ->
             preferences[TIDAL_CLIENT_SECRET] ?: ""
@@ -1954,6 +2007,9 @@ internal class DataStoreManagerImpl(
         val AUTO_BACKUP_FREQUENCY = stringPreferencesKey("auto_backup_frequency")
         val AUTO_BACKUP_MAX_FILES = intPreferencesKey("auto_backup_max_files")
         val AUTO_BACKUP_LAST_TIME = longPreferencesKey("auto_backup_last_time")
+
+        val BLACKLISTED_TRACKS = stringPreferencesKey("blacklisted_tracks")
+        val BLACKLISTED_ARTISTS = stringPreferencesKey("blacklisted_artists")
     }
 }
 

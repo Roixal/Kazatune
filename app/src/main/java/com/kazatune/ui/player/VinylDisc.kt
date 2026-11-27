@@ -27,6 +27,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
+import com.kazatune.ui.theme.RessoAccent
 
 @Composable
 fun VinylDisc(
@@ -67,7 +68,7 @@ fun VinylDisc(
         modifier = discModifier
             .rotate(currentRotation)
             .background(Color(0xFF111111))
-            .border(2.dp, if (isBuffering) Color(0xFFFF0050) else Color(0x33FFFFFF), CircleShape),
+            .border(2.dp, if (isBuffering) RessoAccent else Color(0x33FFFFFF), CircleShape),
         contentAlignment = Alignment.Center
     ) {
         // Grooves on vinyl

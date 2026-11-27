@@ -182,18 +182,8 @@ internal class LyricsCanvasRepositoryImpl(
                                 val track =
                                     if (duration != 0) {
                                         searchResponse.data?.searchV2?.tracksV2?.items?.find {
-                                            abs(
-                                                (
-                                                    (
-                                                        (
-                                                            it.item
-                                                                ?.data
-                                                                ?.duration
-                                                                ?.totalMilliseconds ?: (0 / 1000)
-                                                        ) - duration
-                                                    )
-                                                ),
-                                            ) < 1
+                                            val spotifySec = (it.item?.data?.duration?.totalMilliseconds ?: 0) / 1000
+                                            spotifySec > 0 && abs(spotifySec - duration) <= 5
                                         }
                                             ?: searchResponse.data
                                                 ?.searchV2

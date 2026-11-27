@@ -86,8 +86,9 @@ class SkimViewModel(
     val currentIndex: StateFlow<Int> = _currentIndex.asStateFlow()
 
     val nowPlaying: StateFlow<NowPlayingTrackState> = mediaPlayerHandler.nowPlayingState
-    val mediaState: StateFlow<SimpleMediaState> = mediaPlayerHandler.simpleMediaState
     val controlState = mediaPlayerHandler.controlState
+    val djTransitionState: StateFlow<com.maxrave.domain.mediaservice.handler.DjTransitionState> =
+        com.maxrave.domain.mediaservice.handler.DjTransitionStateHolder.state
 
     val repeatState: StateFlow<RepeatState> = mediaPlayerHandler.controlState
         .map { it.repeatState }
@@ -235,13 +236,6 @@ class SkimViewModel(
     private val _selectedGenre = MutableStateFlow("All")
     val selectedGenre: StateFlow<String> = _selectedGenre.asStateFlow()
 
-    // Return YouTube Dislike State
-    private val _dislikeCount = MutableStateFlow<Int?>(null)
-    val dislikeCount: StateFlow<Int?> = _dislikeCount.asStateFlow()
-
-    private val _isDisliked = MutableStateFlow(false)
-    val isDisliked: StateFlow<Boolean> = _isDisliked.asStateFlow()
-
     // SponsorBlock Skipping & Toast
     private val _sponsorBlockToast = MutableStateFlow<String?>(null)
     val sponsorBlockToast: StateFlow<String?> = _sponsorBlockToast.asStateFlow()
@@ -256,6 +250,18 @@ class SkimViewModel(
     // Refreshing status indicator
     private val _isRefreshing = MutableStateFlow(false)
     val isRefreshing: StateFlow<Boolean> = _isRefreshing.asStateFlow()
+
+    // True Non-Repeating Shuffle (Fisher-Yates Deck)
+    private val _isTrueShuffle = MutableStateFlow(false)
+    val isTrueShuffle: StateFlow<Boolean> = _isTrueShuffle.asStateFlow()
+    private var originalUnshuffledTracks: List<Track> = emptyList()
+
+    // Blacklisted Tracks & Artists ("Never Play Again")
+    private val _blacklistedTrackIds = MutableStateFlow<Set<String>>(emptySet())
+    val blacklistedTrackIds: StateFlow<Set<String>> = _blacklistedTrackIds.asStateFlow()
+
+    private val _blacklistedArtists = MutableStateFlow<Set<String>>(emptySet())
+    val blacklistedArtists: StateFlow<Set<String>> = _blacklistedArtists.asStateFlow()
 
     // Sleep Timer State exposed from handler
     val sleepTimerState = mediaPlayerHandler.sleepTimerState
@@ -277,9 +283,31 @@ class SkimViewModel(
         observeLikedAndDownloaded()
         observePlayback()
         observeSponsorBlock()
+        observeBlacklist()
         startPositionTicker()
         loadMoodCategories()
         // explore data is lazy-loaded when the user selects Explore tab
+    }
+
+    private fun observeBlacklist() {
+        viewModelScope.launch(Dispatchers.IO) {
+            dataStoreManager.blacklistedTrackIds.collect { set ->
+                _blacklistedTrackIds.value = set
+            }
+        }
+        viewModelScope.launch(Dispatchers.IO) {
+            dataStoreManager.blacklistedArtists.collect { set ->
+                _blacklistedArtists.value = set
+            }
+        }
+    }
+
+    private fun isTrackBlacklisted(track: Track): Boolean {
+        if (track.videoId in _blacklistedTrackIds.value) return true
+        val artists = track.artists?.mapNotNull { it.name } ?: emptyList()
+        return artists.any { artist ->
+            _blacklistedArtists.value.any { it.equals(artist, ignoreCase = true) }
+        }
     }
 
     private fun loadMoodCategories() {
@@ -441,6 +469,7 @@ class SkimViewModel(
                             // directly from songs SIMILAR to the last-played song (not random home genres)
                             val currentTrack = _tracks.value.firstOrNull { it.videoId == activeVideoId }
                                 ?: mediaPlayerHandler.nowPlayingState.value.track
+                                ?: songRepository.getSongById(activeVideoId).firstOrNull()?.toTrack()
                                 ?: list.firstOrNull { it.videoId == activeVideoId }
                                 ?: createFallbackTrack(mediaPlayerHandler.nowPlayingState.value)
 
@@ -595,6 +624,17 @@ class SkimViewModel(
                     val nextIdx = _currentIndex.value + 1
                     if (nextIdx < _tracks.value.size) {
                         playTrackAt(nextIdx)
+                    } else if (_isTrueShuffle.value && _tracks.value.size > 1) {
+                        // True Non-Repeating Shuffle: Cycle completed!
+                        val lastTrack = _tracks.value.lastOrNull()
+                        val pool = (if (originalUnshuffledTracks.isNotEmpty()) originalUnshuffledTracks else _tracks.value)
+                            .distinctBy { it.videoId }
+                        val remainingPool = pool.filter { it.videoId != lastTrack?.videoId }.shuffled()
+                        val newCycle = if (lastTrack != null) remainingPool + listOf(lastTrack) else remainingPool
+                        _tracks.value = newCycle
+                        _currentIndex.value = 0
+                        playTrackAt(0)
+                        _sponsorBlockToast.value = "🔀 New shuffle cycle started"
                     } else {
                         val lastTrack = _tracks.value.lastOrNull()
                         if (lastTrack != null && !loadingMore) {
@@ -624,12 +664,18 @@ class SkimViewModel(
                                 mediaPlayerHandler.addMediaItemList(listOf(nextAfter.toGenericMediaItem()))
                             }
                         } else if (currentList.isEmpty()) {
-                            val newTrack = state.track ?: createFallbackTrack(state)
+                            val dbTrack = if (state.track == null) {
+                                withContext(Dispatchers.IO) { songRepository.getSongById(videoId).firstOrNull()?.toTrack() }
+                            } else null
+                            val newTrack = state.track ?: dbTrack ?: createFallbackTrack(state)
                             _tracks.value = listOf(newTrack)
                             _currentIndex.value = 0
                             fetchRadioQueue(videoId, newTrack)
                         } else {
-                            val newTrack = state.track ?: createFallbackTrack(state)
+                            val dbTrack = if (state.track == null) {
+                                withContext(Dispatchers.IO) { songRepository.getSongById(videoId).firstOrNull()?.toTrack() }
+                            } else null
+                            val newTrack = state.track ?: dbTrack ?: createFallbackTrack(state)
                             val merged = listOf(newTrack) + currentList.filter { it.videoId != videoId }
                             _tracks.value = merged
                             _currentIndex.value = 0
@@ -646,8 +692,7 @@ class SkimViewModel(
                         val title = currentTrack?.title ?: state.mediaItem.metadata.title ?: ""
                         fetchLyrics(videoId, artist, title, duration)
 
-                        // Return YouTube Dislike & SponsorBlock & Last.fm
-                        fetchDislikeInfo(videoId)
+                        // SponsorBlock & Last.fm
                         resetLyricsOffset()
                         updateLastFmNowPlaying(videoId)
                     }
@@ -672,6 +717,12 @@ class SkimViewModel(
             try {
                 val canvasEnabled = dataStoreManager.spotifyCanvas.first() == DataStoreManager.Values.TRUE
                 if (canvasEnabled) {
+                    // Ensure song row exists in Room so getCanvas & getAMAnimatedArtwork have title/artist
+                    val track = _tracks.value.firstOrNull { it.videoId == videoId }
+                    if (track != null && songRepository.getSongById(videoId).firstOrNull() == null) {
+                        songRepository.insertSong(track.toSongEntity()).collect {}
+                    }
+
                     // Try Spotify Canvas first
                     var found = false
                     lyricsCanvasRepository.getCanvas(dataStoreManager, videoId, durationSeconds).collect { res ->
@@ -964,6 +1015,127 @@ class SkimViewModel(
     }
 
     /**
+     * Inserts track immediately after current playing track ("Play Next")
+     * and arms it directly as the incoming track in ExoPlayer for the next DJ transition.
+     */
+    fun playNext(track: Track) {
+        val currentList = _tracks.value.toMutableList()
+        val currIdx = _currentIndex.value
+        if (currIdx in currentList.indices) {
+            currentList.removeIf { it.videoId == track.videoId }
+            val safeInsertIdx = (_currentIndex.value + 1).coerceAtMost(currentList.size)
+            currentList.add(safeInsertIdx, track)
+            _tracks.value = currentList
+
+            val player = mediaPlayerHandler.player
+            while (player.mediaItemCount > 1) {
+                player.removeMediaItem(player.mediaItemCount - 1)
+            }
+            mediaPlayerHandler.addMediaItemList(listOf(track.toGenericMediaItem()))
+            _sponsorBlockToast.value = "▶️ Playing next: \"${track.title}\""
+        } else {
+            _tracks.value = listOf(track)
+            playTrackAt(0)
+        }
+    }
+
+    /**
+     * Appends track to the end of the user's active queue ("Add to Queue").
+     */
+    fun addToQueue(track: Track) {
+        val currentList = _tracks.value.toMutableList()
+        currentList.add(track)
+        _tracks.value = currentList
+        if (currentList.size == 1) {
+            playTrackAt(0)
+        } else if (currentList.size == _currentIndex.value + 2) {
+            syncPlayerPair(currentList[_currentIndex.value], track)
+        }
+        _sponsorBlockToast.value = "➕ Added to queue: \"${track.title}\""
+    }
+
+    /**
+     * Toggles True Non-Repeating Shuffle (Fisher-Yates deck shuffle).
+     * When turned ON, all upcoming tracks are shuffled cleanly into a non-repeating cycle,
+     * while leaving the currently playing track playing uninterrupted.
+     */
+    fun toggleTrueShuffle() {
+        val currentList = _tracks.value
+        if (currentList.isEmpty()) return
+        val currIdx = _currentIndex.value.coerceIn(0, currentList.size - 1)
+        val currentTrack = currentList[currIdx]
+
+        if (!_isTrueShuffle.value) {
+            originalUnshuffledTracks = currentList
+            val remaining = currentList.filterIndexed { idx, _ -> idx != currIdx }.shuffled()
+            val shuffledDeck = listOf(currentTrack) + remaining
+            _tracks.value = shuffledDeck
+            _currentIndex.value = 0
+            _isTrueShuffle.value = true
+
+            shuffledDeck.getOrNull(1)?.let { nextSong ->
+                val player = mediaPlayerHandler.player
+                while (player.mediaItemCount > 1) {
+                    player.removeMediaItem(player.mediaItemCount - 1)
+                }
+                mediaPlayerHandler.addMediaItemList(listOf(nextSong.toGenericMediaItem()))
+            }
+            _sponsorBlockToast.value = "🔀 True Shuffle ON (1/${shuffledDeck.size} in cycle)"
+        } else {
+            if (originalUnshuffledTracks.isNotEmpty()) {
+                val foundIdx = originalUnshuffledTracks.indexOfFirst { it.videoId == currentTrack.videoId }
+                _tracks.value = originalUnshuffledTracks
+                _currentIndex.value = if (foundIdx >= 0) foundIdx else 0
+                val nextOriginal = originalUnshuffledTracks.getOrNull(_currentIndex.value + 1)
+                if (nextOriginal != null) {
+                    val player = mediaPlayerHandler.player
+                    while (player.mediaItemCount > 1) {
+                        player.removeMediaItem(player.mediaItemCount - 1)
+                    }
+                    mediaPlayerHandler.addMediaItemList(listOf(nextOriginal.toGenericMediaItem()))
+                }
+            }
+            _isTrueShuffle.value = false
+            _sponsorBlockToast.value = "➡️ Shuffle OFF (Original Order)"
+        }
+    }
+
+    fun blacklistCurrentTrack() {
+        val current = _tracks.value.getOrNull(_currentIndex.value) ?: return
+        viewModelScope.launch(Dispatchers.IO) {
+            dataStoreManager.blacklistTrack(current.videoId)
+            withContext(Dispatchers.Main) {
+                _sponsorBlockToast.value = "🚫 \"${current.title}\" blacklisted"
+                val updated = _tracks.value.filter { it.videoId != current.videoId }
+                _tracks.value = updated
+                if (updated.isNotEmpty()) {
+                    val nextIdx = _currentIndex.value.coerceIn(0, updated.size - 1)
+                    playTrackAt(nextIdx)
+                }
+            }
+        }
+    }
+
+    fun blacklistArtist(artistName: String) {
+        val trimmed = artistName.trim()
+        if (trimmed.isBlank()) return
+        viewModelScope.launch(Dispatchers.IO) {
+            dataStoreManager.blacklistArtist(trimmed)
+            withContext(Dispatchers.Main) {
+                _sponsorBlockToast.value = "🚫 Artist \"$trimmed\" blocked"
+                val updated = _tracks.value.filter { track ->
+                    track.artists?.none { it.name?.equals(trimmed, ignoreCase = true) == true } != false
+                }
+                _tracks.value = updated
+                if (updated.isNotEmpty()) {
+                    val nextIdx = _currentIndex.value.coerceIn(0, updated.size - 1)
+                    playTrackAt(nextIdx)
+                }
+            }
+        }
+    }
+
+    /**
      * Fetches a Spotify-style diverse set of similar tracks:
      * combines primary radio + related tracks + a randomized secondary-seed hop,
      * deprioritizes recently queued tracks, and shuffles within relevance tiers
@@ -1017,7 +1189,7 @@ class SkimViewModel(
 
         val combined = (filteredPrimary + secondaryPool)
             .distinctBy { it.videoId }
-            .filter { it.videoId.isNotBlank() && it.videoId !in excludeIds }
+            .filter { it.videoId.isNotBlank() && it.videoId !in excludeIds && !isTrackBlacklisted(it) }
 
         if (combined.isEmpty()) return emptyList()
 
@@ -1083,19 +1255,6 @@ class SkimViewModel(
 
     fun onPageSettled(index: Int) {
         playTrackAt(index)
-    }
-
-    fun onPageSwiped(pageIndex: Int) {
-        playTrackAt(pageIndex)
-    }
-
-    /**
-     * Reloads the track if it gets stuck due to network/pipeline issues.
-     * Invoked when tapping the rotating vinyl disc.
-     */
-    fun reloadCurrentTrack() {
-        val current = _tracks.value.getOrNull(_currentIndex.value) ?: return
-        reloadTrack(current)
     }
 
     fun reloadTrack(track: Track) {
@@ -1367,22 +1526,30 @@ class SkimViewModel(
         resultType = null
     )
 
-    private fun createFallbackTrack(state: NowPlayingTrackState): Track = Track(
-        album = null,
-        artists = null,
-        duration = null,
-        durationSeconds = 0,
-        isAvailable = true,
-        isExplicit = false,
-        likeStatus = null,
-        thumbnails = null,
-        title = state.mediaItem.metadata.title ?: "Unknown",
-        videoId = state.mediaItem.mediaId,
-        videoType = null,
-        category = null,
-        feedbackTokens = null,
-        resultType = null
-    )
+    private fun createFallbackTrack(state: NowPlayingTrackState): Track {
+        val artworkUrl = state.mediaItem.metadata.artworkUri?.toString()
+        val artistName = state.mediaItem.metadata.artist
+        return Track(
+            album = null,
+            artists = if (!artistName.isNullOrBlank()) {
+                listOf(com.maxrave.domain.data.model.searchResult.songs.Artist(name = artistName, id = null))
+            } else null,
+            duration = null,
+            durationSeconds = 0,
+            isAvailable = true,
+            isExplicit = false,
+            likeStatus = null,
+            thumbnails = if (!artworkUrl.isNullOrBlank()) {
+                listOf(com.maxrave.domain.data.model.searchResult.songs.Thumbnail(height = 544, url = artworkUrl, width = 544))
+            } else null,
+            title = state.mediaItem.metadata.title ?: "Unknown",
+            videoId = state.mediaItem.mediaId,
+            videoType = null,
+            category = null,
+            feedbackTokens = null,
+            resultType = null
+        )
+    }
 
     private fun observeSponsorBlock() {
         viewModelScope.launch(Dispatchers.IO) {
@@ -1393,32 +1560,6 @@ class SkimViewModel(
         mediaPlayerHandler.showToast = { type ->
             if (type is ToastType.SponsorBlockSkip) {
                 _sponsorBlockToast.value = "⚡ Skipped ${type.category}"
-            }
-        }
-    }
-
-    private fun fetchDislikeInfo(videoId: String) {
-        viewModelScope.launch(Dispatchers.IO) {
-            _dislikeCount.value = null
-            _isDisliked.value = false
-            try {
-                songRepository.getSongInfo(videoId).collectLatest { songInfo ->
-                    _dislikeCount.value = songInfo?.dislike
-                }
-            } catch (e: Exception) {
-                e.printStackTrace()
-            }
-        }
-    }
-
-    fun toggleDislike(track: Track) {
-        val willBeDisliked = !_isDisliked.value
-        _isDisliked.value = willBeDisliked
-        val current = _dislikeCount.value ?: 0
-        _dislikeCount.value = if (willBeDisliked) current + 1 else (current - 1).coerceAtLeast(0)
-        viewModelScope.launch(Dispatchers.IO) {
-            if (willBeDisliked) {
-                songRepository.addToYouTubeDisliked(track.videoId).collectLatest {}
             }
         }
     }

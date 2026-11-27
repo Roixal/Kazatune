@@ -255,7 +255,7 @@ fun SearchScreen(
                 suggestions.isNotEmpty() -> {
                     LazyColumn(
                         modifier = Modifier.fillMaxSize(),
-                        contentPadding = PaddingValues(start = 20.dp, end = 20.dp, top = 8.dp, bottom = 120.dp)
+                        contentPadding = PaddingValues(start = 20.dp, end = 20.dp, top = 8.dp, bottom = 190.dp)
                     ) {
                         items(suggestions) { item ->
                             Row(
@@ -290,7 +290,7 @@ fun SearchScreen(
                 hasResults -> {
                     LazyColumn(
                         modifier = Modifier.fillMaxSize(),
-                        contentPadding = PaddingValues(start = 20.dp, end = 20.dp, top = 8.dp, bottom = 120.dp),
+                        contentPadding = PaddingValues(start = 20.dp, end = 20.dp, top = 8.dp, bottom = 190.dp),
                         verticalArrangement = Arrangement.spacedBy(10.dp)
                     ) {
                         when (selectedCategory) {
@@ -373,7 +373,7 @@ fun SearchScreen(
 
                             LazyColumn(
                                 modifier = Modifier.fillMaxSize(),
-                                contentPadding = PaddingValues(start = 20.dp, end = 20.dp, top = 4.dp, bottom = 120.dp)
+                                contentPadding = PaddingValues(start = 20.dp, end = 20.dp, top = 4.dp, bottom = 190.dp)
                             ) {
                                 items(searchHistory, key = { it.query }) { history ->
                                     Row(
@@ -944,7 +944,7 @@ fun SearchDetailView(
             is SearchDetailState.Success -> {
                 LazyColumn(
                     modifier = Modifier.fillMaxSize(),
-                    contentPadding = PaddingValues(bottom = 120.dp)
+                    contentPadding = PaddingValues(bottom = 190.dp)
                 ) {
                     // Header Card
                     item {

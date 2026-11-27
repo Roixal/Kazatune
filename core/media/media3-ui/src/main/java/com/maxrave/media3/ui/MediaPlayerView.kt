@@ -52,10 +52,13 @@ import androidx.media3.datasource.cache.CacheDataSink
 import androidx.media3.datasource.cache.CacheDataSource
 import androidx.media3.datasource.cache.SimpleCache
 import androidx.media3.exoplayer.DefaultLoadControl
+import androidx.media3.exoplayer.DefaultRenderersFactory
 import androidx.media3.exoplayer.ExoPlayer
+import androidx.media3.exoplayer.mediacodec.MediaCodecSelector
 import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
 import androidx.media3.ui.compose.PlayerSurface
 import androidx.media3.ui.compose.SURFACE_TYPE_SURFACE_VIEW
+import androidx.media3.ui.compose.SURFACE_TYPE_TEXTURE_VIEW
 import androidx.media3.ui.compose.modifiers.resizeWithContentScale
 import androidx.media3.ui.compose.state.rememberPresentationState
 import coil3.compose.AsyncImage
@@ -133,8 +136,31 @@ fun MediaPlayerView(
                     .setCacheReadDataSourceFactory(downStreamFactory)
                     .setUpstreamDataSourceFactory(upstreamFactory)
                     .setFlags(CacheDataSource.FLAG_IGNORE_CACHE_ON_ERROR)
+            val isEmulator = Build.FINGERPRINT.contains("generic", ignoreCase = true) ||
+                Build.FINGERPRINT.contains("emulator", ignoreCase = true) ||
+                Build.MODEL.contains("Emulator", ignoreCase = true) ||
+                Build.MODEL.contains("sdk_gphone", ignoreCase = true) ||
+                Build.HARDWARE.contains("ranchu", ignoreCase = true) ||
+                Build.HARDWARE.contains("goldfish", ignoreCase = true)
+            val renderersFactory = DefaultRenderersFactory(context).apply {
+                if (isEmulator) {
+                    setMediaCodecSelector { mimeType, requiresSecureDecoder, requiresTunnelingDecoder ->
+                        val all = MediaCodecSelector.DEFAULT.getDecoderInfos(
+                            mimeType,
+                            requiresSecureDecoder,
+                            requiresTunnelingDecoder,
+                        )
+                        val sw = all.filter {
+                            it.softwareOnly ||
+                                it.name.startsWith("c2.android.", ignoreCase = true) ||
+                                it.name.startsWith("OMX.google.", ignoreCase = true)
+                        }
+                        sw.ifEmpty { all }
+                    }
+                }
+            }
             ExoPlayer
-                .Builder(context)
+                .Builder(context, renderersFactory)
                 .setLoadControl(
                     DefaultLoadControl
                         .Builder()
@@ -185,10 +211,13 @@ fun MediaPlayerView(
         // Center scale-to-cover (ContentScale.Crop) into whatever frame the caller gives us.
         // resizeWithContentScale keeps the true video aspect ratio (no stretch), scales it
         // to fully cover the frame using the real videoSizeDp, then clips the overflow.
-        Box(modifier = modifier.graphicsLayer { clip = true }) {
+        Box(
+            modifier = modifier.graphicsLayer { clip = true },
+            contentAlignment = Alignment.Center,
+        ) {
             PlayerSurface(
                 player = exoPlayer,
-                surfaceType = SURFACE_TYPE_SURFACE_VIEW,
+                surfaceType = SURFACE_TYPE_TEXTURE_VIEW,
                 modifier =
                     Modifier
                         .fillMaxSize()
@@ -197,28 +226,18 @@ fun MediaPlayerView(
                             sourceSizeDp = presentationState.videoSizeDp,
                         ),
             )
-
-            if (presentationState.coverSurface) {
-                // Cover the surface that is being prepared with a shutter
-                Box(Modifier.matchParentSize().background(Color.Black))
-            }
         }
     } else {
         Box(modifier = modifier.graphicsLayer { clip = true }) {
             PlayerSurface(
                 player = exoPlayer,
-                surfaceType = SURFACE_TYPE_SURFACE_VIEW,
+                surfaceType = SURFACE_TYPE_TEXTURE_VIEW,
                 modifier =
                     Modifier
                         .fillMaxHeight()
                         .width(with(density) { widthPx.toDp() })
                         .align(Alignment.Center),
             )
-
-            if (presentationState.coverSurface) {
-                // Cover the surface that is being prepared with a shutter
-                Box(Modifier.background(Color.Black))
-            }
         }
     }
 }

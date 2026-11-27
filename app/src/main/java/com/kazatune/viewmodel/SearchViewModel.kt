@@ -216,64 +216,6 @@ class SearchViewModel(
         mediaPlayerHandler.addMediaItem(track.toGenericMediaItem(), playWhenReady = true)
     }
 
-    fun playAlbum(album: AlbumsResult, onTracksLoaded: (List<Track>) -> Unit) {
-        viewModelScope.launch(Dispatchers.IO) {
-            try {
-                albumRepository.getAlbumData(album.browseId).collect { res ->
-                    if (res is Resource.Success && !res.data?.tracks.isNullOrEmpty()) {
-                        onTracksLoaded(res.data!!.tracks)
-                    }
-                }
-            } catch (e: Exception) {
-                e.printStackTrace()
-            }
-        }
-    }
-
-    fun playPlaylist(playlist: PlaylistsResult, onTracksLoaded: (List<Track>) -> Unit) {
-        viewModelScope.launch(Dispatchers.IO) {
-            try {
-                playlistRepository.getFullPlaylistData(playlist.browseId, "views").collect { res ->
-                    if (res is Resource.Success && !res.data?.tracks.isNullOrEmpty()) {
-                        onTracksLoaded(res.data!!.tracks)
-                    } else {
-                        songRepository.getRadioFromEndpoint(YouTubeWatchEndpoint(playlistId = playlist.browseId)).collect { radioRes ->
-                            if (radioRes is Resource.Success && !radioRes.data?.first.isNullOrEmpty()) {
-                                onTracksLoaded(radioRes.data!!.first)
-                            }
-                        }
-                    }
-                }
-            } catch (e: Exception) {
-                e.printStackTrace()
-            }
-        }
-    }
-
-    fun playArtist(artist: ArtistsResult, onTracksLoaded: (List<Track>) -> Unit) {
-        viewModelScope.launch(Dispatchers.IO) {
-            try {
-                artistRepository.getArtistData(artist.browseId).collect { res ->
-                    if (res is Resource.Success && res.data != null) {
-                        val artistData = res.data!!
-                        val topSongs = artistData.songs?.results?.map { it.toTrack() }
-                        if (!topSongs.isNullOrEmpty()) {
-                            onTracksLoaded(topSongs)
-                        } else if (artistData.radioId != null) {
-                            songRepository.getRadioFromEndpoint(artistData.radioId!!).collect { rRes ->
-                                if (rRes is Resource.Success && !rRes.data?.first.isNullOrEmpty()) {
-                                    onTracksLoaded(rRes.data!!.first)
-                                }
-                            }
-                        }
-                    }
-                }
-            } catch (e: Exception) {
-                e.printStackTrace()
-            }
-        }
-    }
-
     fun deleteSearchHistoryItem(query: String) {
         _searchHistory.value = _searchHistory.value.filter { it.query != query }
         viewModelScope.launch(Dispatchers.IO) {

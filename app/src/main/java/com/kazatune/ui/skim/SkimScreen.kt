@@ -1,6 +1,7 @@
 package com.kazatune.ui.skim
 
 import android.widget.Toast
+import androidx.activity.compose.BackHandler
 import androidx.compose.material.icons.automirrored.filled.PlaylistAdd
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Repeat
@@ -31,6 +32,7 @@ import androidx.compose.animation.scaleOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
@@ -60,6 +62,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.QueueMusic
 import androidx.compose.material.icons.filled.AvTimer
+import androidx.compose.material.icons.filled.Block
 import androidx.compose.material.icons.filled.Bolt
 import androidx.compose.material.icons.filled.ChatBubble
 import androidx.compose.material.icons.filled.CheckCircle
@@ -68,13 +71,17 @@ import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material.icons.filled.FormatQuote
+import androidx.compose.material.icons.filled.GraphicEq
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.MusicNote
 import androidx.compose.material.icons.filled.Pause
+import androidx.compose.material.icons.filled.PersonOff
 import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.PlaylistPlay
 import androidx.compose.material.icons.filled.Radio
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Share
+import androidx.compose.material.icons.filled.Shuffle
 import androidx.compose.material.icons.filled.SkipNext
 import androidx.compose.material.icons.filled.SkipPrevious
 import androidx.compose.material.icons.filled.Tune
@@ -118,6 +125,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
@@ -127,12 +135,17 @@ import coil3.compose.AsyncImage
 import coil3.request.ImageRequest
 import coil3.request.crossfade
 import com.kazatune.ui.comments.CommentBottomSheet
+import com.kazatune.ui.component.DynamicFluidMesh
+import com.kazatune.ui.component.EqualizerBottomSheet
 import com.kazatune.ui.explore.ExploreView
+import com.kazatune.ui.player.AestheticLyricsScreen
+import com.kazatune.ui.player.PaintMixArtworkTransition
 import com.kazatune.ui.player.SyncedLyricsOverlay
 import com.kazatune.ui.player.VinylDisc
 import com.kazatune.ui.theme.DinProFamily
 import com.kazatune.ui.theme.RessoAccent
 import com.kazatune.viewmodel.CommentViewModel
+import com.kazatune.viewmodel.SettingsViewModel
 import com.kazatune.viewmodel.SkimTab
 import com.kazatune.viewmodel.SkimViewModel
 import com.maxrave.domain.data.model.browse.album.Track
@@ -150,6 +163,8 @@ import kotlin.math.roundToInt
 fun SkimScreen(
     skimViewModel: SkimViewModel = koinViewModel(),
     commentViewModel: CommentViewModel = koinViewModel(),
+    settingsViewModel: SettingsViewModel = koinViewModel(),
+    onFullscreenLyricsChange: (Boolean) -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val tracks by skimViewModel.tracks.collectAsStateWithLifecycle()
@@ -172,10 +187,19 @@ fun SkimScreen(
     val sleepTimerState by skimViewModel.sleepTimerState.collectAsStateWithLifecycle()
     val repeatState by skimViewModel.repeatState.collectAsStateWithLifecycle()
     val localPlaylists by skimViewModel.localPlaylists.collectAsStateWithLifecycle()
+    val djTransitionState by skimViewModel.djTransitionState.collectAsStateWithLifecycle()
 
     var showSleepTimerSheet by remember { mutableStateOf(false) }
     var showAddToPlaylistSheet by remember { mutableStateOf(false) }
     var showCreatePlaylistDialog by remember { mutableStateOf(false) }
+    var showEqualizerSheet by remember { mutableStateOf(false) }
+
+    val equalizerEnabled by settingsViewModel.equalizerEnabled.collectAsStateWithLifecycle()
+    val equalizerPreset by settingsViewModel.equalizerPreset.collectAsStateWithLifecycle()
+    val equalizerBands by settingsViewModel.equalizerBands.collectAsStateWithLifecycle()
+    val equalizerBassBoost by settingsViewModel.equalizerBassBoost.collectAsStateWithLifecycle()
+    val isTrueShuffle by skimViewModel.isTrueShuffle.collectAsStateWithLifecycle()
+    val haptic = LocalHapticFeedback.current
 
     val infiniteTransition = rememberInfiniteTransition(label = "RefreshRotation")
     val refreshRotation by infiniteTransition.animateFloat(
@@ -200,6 +224,14 @@ fun SkimScreen(
     var showLyricShareDialog by remember { mutableStateOf(false) }
     var isFullscreenLyrics by remember { mutableStateOf(false) }
 
+    LaunchedEffect(isFullscreenLyrics) {
+        onFullscreenLyricsChange(isFullscreenLyrics)
+    }
+
+    BackHandler(enabled = isFullscreenLyrics) {
+        isFullscreenLyrics = false
+    }
+
     val commentSheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val queueSheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val moreMenuSheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
@@ -213,6 +245,7 @@ fun SkimScreen(
     fun triggerPlayPause() {
         playPausePulseIcon = if (isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow
         playPausePulseVisible = true
+        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
         skimViewModel.togglePlayPause()
         coroutineScope.launch {
             delay(500)
@@ -333,6 +366,14 @@ fun SkimScreen(
                     modifier = Modifier.fillMaxSize()
                 ) { page ->
                     val track = tracks[page]
+                    val outgoingArtworkForTransition = if (
+                        djTransitionState.isTransitioning &&
+                        djTransitionState.djMode &&
+                        track.videoId == djTransitionState.incomingMediaId
+                    ) {
+                        tracks.firstOrNull { it.videoId == djTransitionState.outgoingMediaId }
+                            ?.thumbnails?.lastOrNull()?.url
+                    } else null
                     SkimPageCard(
                         track = track,
                         isPlaying = isPlaying && page == pagerState.currentPage,
@@ -344,6 +385,8 @@ fun SkimScreen(
                         isDownloaded = downloadedVideoIds.contains(track.videoId),
                         isDownloading = downloadingVideoIds.contains(track.videoId),
                         isFullscreenLyrics = isFullscreenLyrics,
+                        djTransitionProgress = if (outgoingArtworkForTransition != null) djTransitionState.progress else null,
+                        outgoingArtworkUrl = outgoingArtworkForTransition,
                         onToggleLyricsFullscreen = { isFullscreenLyrics = !isFullscreenLyrics },
                         onToggleLike = { skimViewModel.toggleLike(track) },
                         onToggleDownload = { skimViewModel.toggleDownload(track) },
@@ -427,7 +470,93 @@ fun SkimScreen(
             }
         }
 
-        // Top Navigation Header: [Skim (Refresh)] [For You | Explore | Moods] [More (...)]
+        // Centered Aesthetic Feed Refresh Animation
+        AnimatedVisibility(
+            visible = isRefreshing,
+            enter = scaleIn(initialScale = 0.82f, animationSpec = tween(250, easing = FastOutSlowInEasing)) + fadeIn(tween(220)),
+            exit = scaleOut(targetScale = 0.88f, animationSpec = tween(260, easing = FastOutSlowInEasing)) + fadeOut(tween(240)),
+            modifier = Modifier.align(Alignment.Center)
+        ) {
+            val pulseScale by infiniteTransition.animateFloat(
+                initialValue = 0.88f,
+                targetValue = 1.14f,
+                animationSpec = infiniteRepeatable(
+                    animation = tween(650, easing = FastOutSlowInEasing),
+                    repeatMode = RepeatMode.Reverse
+                ),
+                label = "RefreshPulse"
+            )
+            LiquidGlassCard(
+                shape = RoundedCornerShape(26.dp),
+                backgroundColor = Color(0xD612111C),
+                borderBrush = LiquidGlassColors.GlassBorderBrush
+            ) {
+                Column(
+                    modifier = Modifier.padding(horizontal = 28.dp, vertical = 22.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Box(
+                        modifier = Modifier.size(64.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        // Rotating gradient ring
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .graphicsLayer { rotationZ = refreshRotation }
+                                .border(
+                                    width = 3.dp,
+                                    brush = Brush.sweepGradient(
+                                        colors = listOf(
+                                            RessoAccent,
+                                            Color(0xFF00E5FF),
+                                            Color(0xFF9D4EDD),
+                                            Color.Transparent,
+                                            RessoAccent
+                                        )
+                                    ),
+                                    shape = CircleShape
+                                )
+                        )
+                        // Pulsing inner orb + music icon
+                        Box(
+                            modifier = Modifier
+                                .size(44.dp)
+                                .scale(pulseScale)
+                                .clip(CircleShape)
+                                .background(RessoAccent.copy(alpha = 0.22f)),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.GraphicEq,
+                                contentDescription = "Refreshing",
+                                tint = Color.White,
+                                modifier = Modifier.size(22.dp)
+                            )
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(14.dp))
+
+                    Text(
+                        text = "Refreshing Feed",
+                        fontFamily = DinProFamily,
+                        fontSize = 15.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color.White
+                    )
+                    Spacer(modifier = Modifier.height(2.dp))
+                    Text(
+                        text = "Finding fresh tracks...",
+                        fontFamily = DinProFamily,
+                        fontSize = 12.sp,
+                        color = Color(0x99FFFFFF)
+                    )
+                }
+            }
+        }
+
+        // Top Navigation Header: [Skim] [For You | Explore | Moods] [More (...)]
         // Hidden in landscape mode so the horizontal player remains unobstructed
         if (!isLandscape) {
             Column(
@@ -442,9 +571,8 @@ fun SkimScreen(
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    // Left: "Skim" refresh button
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
+                    // Left: "Skim" title (tap to refresh)
+                    Box(
                         modifier = Modifier
                             .clip(RoundedCornerShape(12.dp))
                             .clickable { skimViewModel.refreshFeed() }
@@ -456,17 +584,6 @@ fun SkimScreen(
                             fontSize = 20.sp,
                             fontWeight = FontWeight.Bold,
                             color = Color.White
-                        )
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Icon(
-                            imageVector = Icons.Default.Refresh,
-                            contentDescription = "Refresh",
-                            tint = RessoAccent,
-                            modifier = Modifier
-                                .size(16.dp)
-                                .graphicsLayer {
-                                    rotationZ = if (isRefreshing) refreshRotation else 0f
-                                }
                         )
                     }
 
@@ -551,6 +668,39 @@ fun SkimScreen(
                 }
             }
         }
+
+        // Full-Screen Aesthetic Lyrics Overlay
+        AnimatedVisibility(
+            visible = isFullscreenLyrics && currentTrack != null,
+            enter = slideInVertically(
+                animationSpec = tween(durationMillis = 320, easing = FastOutSlowInEasing),
+                initialOffsetY = { it }
+            ) + fadeIn(animationSpec = tween(250)),
+            exit = slideOutVertically(
+                animationSpec = tween(durationMillis = 260, easing = FastOutSlowInEasing),
+                targetOffsetY = { it }
+            ) + fadeOut(animationSpec = tween(200)),
+            modifier = Modifier.fillMaxSize()
+        ) {
+            currentTrack?.let { track ->
+                AestheticLyricsScreen(
+                    track = track,
+                    lyrics = lyrics,
+                    isPlaying = isPlaying,
+                    currentPositionMs = currentPositionMs,
+                    totalDurationMs = totalDurationMs,
+                    lyricsOffsetMs = lyricsOffsetMs,
+                    onSeek = { pos -> skimViewModel.seekTo(pos) },
+                    onTogglePlayPause = { triggerPlayPause() },
+                    onPrevious = { skimViewModel.skipToPrevious() },
+                    onNext = { skimViewModel.skipToNext() },
+                    onClose = { isFullscreenLyrics = false },
+                    onShareLyric = { showLyricShareDialog = true },
+                    onAdjustLyricsOffset = { delta -> skimViewModel.adjustLyricsOffset(delta) },
+                    onResetLyricsOffset = { skimViewModel.resetLyricsOffset() }
+                )
+            }
+        }
     }
 
     // 1. Comments Bottom Sheet
@@ -591,6 +741,24 @@ fun SkimScreen(
                     )
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         TextButton(
+                            onClick = { skimViewModel.toggleTrueShuffle() }
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Shuffle,
+                                contentDescription = "True Shuffle",
+                                tint = if (isTrueShuffle) Color(0xFF00E5FF) else Color(0xAAFFFFFF),
+                                modifier = Modifier.size(18.dp)
+                            )
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text(
+                                text = if (isTrueShuffle) "Shuffle ON" else "Shuffle",
+                                fontFamily = DinProFamily,
+                                fontSize = 13.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                color = if (isTrueShuffle) Color(0xFF00E5FF) else Color(0xAAFFFFFF)
+                            )
+                        }
+                        TextButton(
                             onClick = { skimViewModel.refreshQueue() }
                         ) {
                             Icon(
@@ -628,7 +796,7 @@ fun SkimScreen(
                         val isCurrent = idx == currentIndex
                         Surface(
                             shape = RoundedCornerShape(10.dp),
-                            color = if (isCurrent) Color(0x33FF0050) else Color(0xFF1C1B24),
+                            color = if (isCurrent) RessoAccent.copy(alpha = 0.2f) else Color(0xFF1C1B24),
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .clickable {
@@ -800,6 +968,30 @@ fun SkimScreen(
                     )
                 }
 
+                // 10-Band Graphic Equalizer
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable {
+                            showMoreMenuSheet = false
+                            showEqualizerSheet = true
+                        }
+                        .padding(vertical = 12.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(Icons.Default.GraphicEq, null, tint = Color(0xFF00E5FF), modifier = Modifier.size(22.dp))
+                    Spacer(modifier = Modifier.width(16.dp))
+                    Column {
+                        Text("Equalizer & Sound Effects", fontFamily = DinProFamily, fontSize = 15.sp, color = Color.White)
+                        Text(
+                            text = if (equalizerEnabled) "Active • $equalizerPreset" else "Bypassed (Flat)",
+                            fontFamily = DinProFamily,
+                            fontSize = 12.sp,
+                            color = Color(0x88FFFFFF)
+                        )
+                    }
+                }
+
                 // Share URL
                 Row(
                     modifier = Modifier
@@ -825,6 +1017,73 @@ fun SkimScreen(
                     Spacer(modifier = Modifier.width(16.dp))
                     Text("Share Track Link", fontFamily = DinProFamily, fontSize = 15.sp, color = Color.White)
                 }
+
+                // Play Next
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable {
+                            currentTrack?.let { skimViewModel.playNext(it) }
+                            showMoreMenuSheet = false
+                        }
+                        .padding(vertical = 12.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(Icons.Default.PlaylistPlay, null, tint = Color.White, modifier = Modifier.size(22.dp))
+                    Spacer(modifier = Modifier.width(16.dp))
+                    Text("Play Next", fontFamily = DinProFamily, fontSize = 15.sp, color = Color.White)
+                }
+
+                // Add to Queue
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable {
+                            currentTrack?.let { skimViewModel.addToQueue(it) }
+                            showMoreMenuSheet = false
+                        }
+                        .padding(vertical = 12.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(Icons.AutoMirrored.Filled.QueueMusic, null, tint = Color.White, modifier = Modifier.size(22.dp))
+                    Spacer(modifier = Modifier.width(16.dp))
+                    Text("Add to Queue", fontFamily = DinProFamily, fontSize = 15.sp, color = Color.White)
+                }
+
+                // Blacklist Track ("Don't play this song again")
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable {
+                            showMoreMenuSheet = false
+                            skimViewModel.blacklistCurrentTrack()
+                        }
+                        .padding(vertical = 12.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(Icons.Default.Block, null, tint = RessoAccent, modifier = Modifier.size(22.dp))
+                    Spacer(modifier = Modifier.width(16.dp))
+                    Text("Don't play this song again", fontFamily = DinProFamily, fontSize = 15.sp, color = RessoAccent)
+                }
+
+                // Blacklist Artist ("Don't recommend [Artist]")
+                val mainArtist = currentTrack?.artists?.firstOrNull()?.name
+                if (!mainArtist.isNullOrBlank()) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable {
+                                showMoreMenuSheet = false
+                                skimViewModel.blacklistArtist(mainArtist)
+                            }
+                            .padding(vertical = 12.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(Icons.Default.PersonOff, null, tint = Color(0xAAFFFFFF), modifier = Modifier.size(22.dp))
+                        Spacer(modifier = Modifier.width(16.dp))
+                        Text("Don't recommend \"$mainArtist\"", fontFamily = DinProFamily, fontSize = 15.sp, color = Color(0xAAFFFFFF))
+                    }
+                }
             }
         }
     }
@@ -845,6 +1104,21 @@ fun SkimScreen(
             timeRemainingMinutes = sleepRemaining,
             onSetTimer = { mins -> skimViewModel.setSleepTimer(mins) },
             onDismissRequest = { showSleepTimerSheet = false }
+        )
+    }
+
+    // 10-Band Equalizer Bottom Sheet
+    if (showEqualizerSheet) {
+        EqualizerBottomSheet(
+            enabled = equalizerEnabled,
+            activePreset = equalizerPreset,
+            bandsDb = equalizerBands,
+            bassBoostStrength = equalizerBassBoost,
+            onToggleEnabled = { settingsViewModel.setEqualizerEnabled(it) },
+            onSelectPreset = { settingsViewModel.selectEqualizerPreset(it) },
+            onBandChange = { idx, gain -> settingsViewModel.setEqualizerBand(idx, gain) },
+            onBassBoostChange = { settingsViewModel.setBassBoost(it) },
+            onDismissRequest = { showEqualizerSheet = false }
         )
     }
 
@@ -893,6 +1167,8 @@ fun SkimPageCard(
     isDownloaded: Boolean,
     isDownloading: Boolean,
     isFullscreenLyrics: Boolean,
+    djTransitionProgress: Float? = null,
+    outgoingArtworkUrl: String? = null,
     repeatState: RepeatState = RepeatState.None,
     onToggleRepeat: () -> Unit = {},
     onToggleLyricsFullscreen: () -> Unit,
@@ -936,7 +1212,20 @@ fun SkimPageCard(
     }
 
     Box(
-        modifier = Modifier.fillMaxSize()
+        modifier = Modifier
+            .fillMaxSize()
+            .pointerInput(track.videoId) {
+                detectTapGestures(
+                    onTap = { onTogglePlayPause() },
+                    onDoubleTap = { offset ->
+                        doubleTapHeartOffset = offset
+                        if (!isLiked) {
+                            onToggleLike()
+                        }
+                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                    }
+                )
+            }
     ) {
         // Component 2: Background (Spotify Canvas Video Loop vs Downscaled 60fps Ambient Backdrop)
         val canvasUrl = canvas?.canvasUrl
@@ -963,6 +1252,11 @@ fun SkimPageCard(
                 cropToBounds = true
             )
         } else {
+            DynamicFluidMesh(
+                seedString = track.videoId,
+                artworkUrl = artworkUrl,
+                orbAlpha = 0.65f
+            )
             AsyncImage(
                 model = ImageRequest.Builder(LocalContext.current)
                     .data(artworkUrl)
@@ -971,6 +1265,7 @@ fun SkimPageCard(
                     .build(),
                 contentDescription = "Ambient Backdrop",
                 contentScale = ContentScale.Crop,
+                alpha = 0.25f,
                 modifier = Modifier
                     .fillMaxSize()
                     .blur(24.dp)
@@ -993,10 +1288,38 @@ fun SkimPageCard(
                 )
         )
 
-        // Main Content Column
+        val isDjMixing = com.kazatune.ui.theme.AppAccentState.djMixAnimationEnabled &&
+            djTransitionProgress != null && !outgoingArtworkUrl.isNullOrBlank()
+        val mixContentAlpha by animateFloatAsState(
+            targetValue = if (isDjMixing) 0f else 1f,
+            animationSpec = tween(durationMillis = 650, easing = FastOutSlowInEasing),
+            label = "DjMixContentAlpha"
+        )
+        var lastMixOutgoingUrl by remember { mutableStateOf<String?>(null) }
+        var lastMixProgress by remember { mutableFloatStateOf(0f) }
+        if (isDjMixing) {
+            lastMixOutgoingUrl = outgoingArtworkUrl
+            lastMixProgress = djTransitionProgress ?: 0f
+        }
+        AnimatedVisibility(
+            visible = isDjMixing,
+            enter = fadeIn(animationSpec = tween(durationMillis = 500, easing = FastOutSlowInEasing)),
+            exit = fadeOut(animationSpec = tween(durationMillis = 650, easing = FastOutSlowInEasing)),
+            modifier = Modifier.fillMaxSize()
+        ) {
+            PaintMixArtworkTransition(
+                outgoingArtworkUrl = lastMixOutgoingUrl,
+                incomingArtworkUrl = artworkUrl,
+                progress = lastMixProgress,
+                modifier = Modifier.fillMaxSize()
+            )
+        }
+
+        // Main Content Column (fades out smoothly during DJ mixing, leaving only top & bottom bars)
         Column(
             modifier = Modifier
                 .fillMaxSize()
+                .graphicsLayer { alpha = mixContentAlpha }
                 .statusBarsPadding()
                 .padding(top = 96.dp, bottom = 86.dp)
                 .padding(horizontal = 20.dp),
@@ -1023,6 +1346,7 @@ fun SkimPageCard(
                             fontSize = 20.sp,
                             fontWeight = FontWeight.Bold,
                             color = Color.White,
+                            minLines = 2,
                             maxLines = 2,
                             overflow = TextOverflow.Ellipsis,
                             lineHeight = 26.sp
@@ -1041,80 +1365,41 @@ fun SkimPageCard(
                 }
             }
 
-            // B. Center Content: Album Cover Card OR Component 1 Interactive Karaoke Lyrics
+            // B. Center Content: Album Cover Card (latches small once 30s is reached on Canvas tracks)
+            var hasPassed30Sec by remember(track.videoId) { mutableStateOf(false) }
+            LaunchedEffect(currentPositionMs, isCanvasVideo, isPlaying) {
+                if (isCanvasVideo && isPlaying && currentPositionMs >= 30_000L) {
+                    hasPassed30Sec = true
+                }
+            }
+            val showCompactArtForCanvas = isCanvasVideo && hasPassed30Sec
+            val artWidthFraction by animateFloatAsState(
+                targetValue = if (showCompactArtForCanvas) 0.36f else 0.92f,
+                animationSpec = tween(durationMillis = 600, easing = FastOutSlowInEasing),
+                label = "CanvasArtWidth"
+            )
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
                     .weight(1f)
                     .padding(vertical = 8.dp),
-                contentAlignment = Alignment.Center
+                contentAlignment = if (showCompactArtForCanvas) Alignment.BottomStart else Alignment.Center
             ) {
-                if (isFullscreenLyrics) {
-                    // Fullscreen Karaoke Lyrics Overlay
-                    Column(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .clip(RoundedCornerShape(16.dp))
-                            .background(Color(0xAA141318))
-                            .padding(14.dp)
-                    ) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Text(
-                                text = "Lyrics (Tap line to seek)",
-                                fontFamily = DinProFamily,
-                                fontSize = 16.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = Color.White
-                            )
-                            IconButton(onClick = onToggleLyricsFullscreen) {
-                                Icon(
-                                    imageVector = Icons.Default.Close,
-                                    contentDescription = "Close",
-                                    tint = Color.White
-                                )
-                            }
-                        }
-
-                        SyncedLyricsOverlay(
-                            lyrics = lyrics,
-                            currentPositionMs = currentPositionMs,
-                            onLineClick = onSeek,
-                            modifier = Modifier.fillMaxSize()
-                        )
-                    }
-                } else {
-                    // Center Album Cover Card (Tapping toggles Play/Pause, Double-tap Likes)
-                    Surface(
-                        shape = RoundedCornerShape(20.dp),
-                        color = Color(0xFF1E1D24),
-                        shadowElevation = 16.dp,
-                        modifier = Modifier
-                            .fillMaxWidth(0.92f)
-                            .aspectRatio(1f)
-                            .pointerInput(track.videoId) {
-                                detectTapGestures(
-                                    onTap = { onTogglePlayPause() },
-                                    onDoubleTap = { offset ->
-                                        doubleTapHeartOffset = offset
-                                        if (!isLiked) {
-                                            onToggleLike()
-                                        }
-                                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                                    }
-                                )
-                            }
-                    ) {
-                        AsyncImage(
-                            model = artworkUrl,
-                            contentDescription = track.title,
-                            contentScale = ContentScale.Crop,
-                            modifier = Modifier.fillMaxSize()
-                        )
-                    }
+                // Center Album Cover Card
+                Surface(
+                    shape = RoundedCornerShape(if (showCompactArtForCanvas) 14.dp else 20.dp),
+                    color = Color(0xFF1E1D24),
+                    shadowElevation = 16.dp,
+                    modifier = Modifier
+                        .fillMaxWidth(artWidthFraction)
+                        .aspectRatio(1f)
+                ) {
+                    AsyncImage(
+                        model = artworkUrl,
+                        contentDescription = track.title,
+                        contentScale = ContentScale.Crop,
+                        modifier = Modifier.fillMaxSize()
+                    )
                 }
             }
 
@@ -1175,7 +1460,10 @@ fun SkimPageCard(
                     )
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier.clickable { onToggleLike() }
+                        modifier = Modifier.clickable {
+                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                            onToggleLike()
+                        }
                     ) {
                         Icon(
                             imageVector = if (isLiked) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
@@ -1212,18 +1500,23 @@ fun SkimPageCard(
                         )
                     }
 
-                    // Component 4: 🎯 Hook / Chorus Instant Jump Chip
-                    LiquidGlassPill(
-                        onClick = onHookClick,
-                        backgroundColor = Color(0x33FF0050),
-                        borderBrush = LiquidGlassColors.GlassAccentBorderBrush
+                    // Hook / Chorus Instant Jump Button (matches Like & Chat style)
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.clickable { onHookClick() }
                     ) {
+                        Icon(
+                            imageVector = Icons.Default.Bolt,
+                            contentDescription = "Hook",
+                            tint = Color.White,
+                            modifier = Modifier.size(20.dp)
+                        )
+                        Spacer(modifier = Modifier.width(4.dp))
                         Text(
-                            text = "🎯 Hook",
+                            text = "Hook",
                             fontFamily = DinProFamily,
-                            fontSize = 11.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = RessoAccent
+                            fontSize = 12.sp,
+                            color = Color.White
                         )
                     }
                 }
@@ -1352,6 +1645,7 @@ fun SkimPageCard(
                         onValueChange = { frac ->
                             isUserDragging = true
                             sliderPosition = frac
+                            haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                         },
                         onValueChangeFinished = {
                             isUserDragging = false
@@ -1435,14 +1729,6 @@ private fun formatTimeMs(millis: Long): String {
     return String.format(java.util.Locale.US, "%d:%02d", minutes, remainingSeconds)
 }
 
-private fun formatCount(count: Int): String {
-    return when {
-        count >= 1_000_000 -> String.format(java.util.Locale.US, "%.1fM", count / 1_000_000f)
-        count >= 1_000 -> String.format(java.util.Locale.US, "%.1fk", count / 1_000f)
-        else -> count.toString()
-    }
-}
-
 /**
  * Dedicated Landscape & Tablet Player:
  * Horizontal Apple Liquid Glass layout with Vinyl disc, audio scrubber, timing offset calibration,
@@ -1485,7 +1771,12 @@ fun SkimLandscapePlayer(
     }
 
     Box(modifier = modifier.fillMaxSize().background(Color.Black)) {
-        // Ambient backdrop
+        // Dynamic Fluid Mesh Gradient + Ambient backdrop
+        DynamicFluidMesh(
+            seedString = track.videoId,
+            artworkUrl = artworkUrl,
+            orbAlpha = 0.60f
+        )
         AsyncImage(
             model = ImageRequest.Builder(LocalContext.current)
                 .data(artworkUrl)
@@ -1494,6 +1785,7 @@ fun SkimLandscapePlayer(
                 .build(),
             contentDescription = null,
             contentScale = ContentScale.Crop,
+            alpha = 0.22f,
             modifier = Modifier.fillMaxSize().blur(28.dp)
         )
 
@@ -1508,193 +1800,152 @@ fun SkimLandscapePlayer(
                 )
         )
 
+        // Apple Music–Style Landscape / Docker Layout:
+        // Open borderless left player (artwork + title + scrubber + transport) & large left-aligned lyrics on right
         Row(
             modifier = Modifier
                 .fillMaxSize()
                 .statusBarsPadding()
-                .padding(16.dp),
-            horizontalArrangement = Arrangement.spacedBy(16.dp)
+                .padding(horizontal = 28.dp, vertical = 18.dp),
+            horizontalArrangement = Arrangement.spacedBy(32.dp),
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            // LEFT PANE: Vinyl, Metadata, Controls & Timing Calibration
-            LiquidGlassCard(
+            // LEFT COLUMN (~38%): Large Album Art + Title/Artist + Scrubber + Transport
+            Column(
                 modifier = Modifier
-                    .weight(0.48f)
+                    .weight(0.38f)
                     .fillMaxHeight(),
-                shape = RoundedCornerShape(24.dp),
-                backgroundColor = Color(0x35191825),
-                borderBrush = LiquidGlassColors.GlassBorderBrush
+                verticalArrangement = Arrangement.Center,
+                horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                Column(
+                Surface(
+                    shape = RoundedCornerShape(16.dp),
+                    color = Color(0xFF1E1D24),
+                    shadowElevation = 20.dp,
                     modifier = Modifier
-                        .fillMaxSize()
-                        .padding(20.dp),
-                    verticalArrangement = Arrangement.SpaceBetween,
-                    horizontalAlignment = Alignment.CenterHorizontally
+                        .fillMaxWidth(0.76f)
+                        .aspectRatio(1f)
+                        .clickable { onTogglePlayPause() }
                 ) {
-                    // Vinyl Disc
-                    VinylDisc(
-                        artworkUrl = artworkUrl,
-                        isPlaying = isPlaying,
-                        onClick = onReload,
-                        modifier = Modifier.size(110.dp)
+                    AsyncImage(
+                        model = artworkUrl,
+                        contentDescription = track.title,
+                        contentScale = ContentScale.Crop,
+                        modifier = Modifier.fillMaxSize()
                     )
+                }
 
-                    // Track Title & Artist
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Spacer(modifier = Modifier.height(14.dp))
+
+                // Title, Artist, Like & Sync offset
+                Row(
+                    modifier = Modifier.fillMaxWidth(0.86f),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
                         Text(
                             text = track.title,
                             fontFamily = DinProFamily,
-                            fontSize = 18.sp,
+                            fontSize = 16.sp,
                             fontWeight = FontWeight.Bold,
                             color = Color.White,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis
                         )
-                        Spacer(modifier = Modifier.height(2.dp))
                         Text(
                             text = artistName.ifBlank { "Unknown Artist" },
                             fontFamily = DinProFamily,
                             fontSize = 13.sp,
-                            color = Color(0x99FFFFFF),
+                            color = Color(0xAAFFFFFF),
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis
                         )
                     }
-
-                    // Scrubber
-                    Column(modifier = Modifier.fillMaxWidth()) {
-                        Slider(
-                            value = sliderPosition,
-                            onValueChange = {
-                                isUserDragging = true
-                                sliderPosition = it
-                            },
-                            onValueChangeFinished = {
-                                isUserDragging = false
-                                onSeek((sliderPosition * effectiveDurationMs).toLong())
-                            },
-                            colors = SliderDefaults.colors(
-                                thumbColor = RessoAccent,
-                                activeTrackColor = RessoAccent,
-                                inactiveTrackColor = Color(0x30FFFFFF)
-                            ),
-                            modifier = Modifier.fillMaxWidth()
+                    IconButton(onClick = onToggleLike, modifier = Modifier.size(34.dp)) {
+                        Icon(
+                            imageVector = if (isLiked) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
+                            contentDescription = "Like",
+                            tint = if (isLiked) RessoAccent else Color(0xCCFFFFFF),
+                            modifier = Modifier.size(20.dp)
                         )
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween
-                        ) {
-                            Text(formatTimeMs(currentPositionMs), fontFamily = DinProFamily, fontSize = 11.sp, color = Color(0x88FFFFFF))
-                            Text(formatTimeMs(effectiveDurationMs), fontFamily = DinProFamily, fontSize = 11.sp, color = Color(0x88FFFFFF))
-                        }
                     }
+                }
 
-                    // Transport Row: Prev, Play/Pause, Next, Like, Dislike
+                Spacer(modifier = Modifier.height(6.dp))
+
+                // Slim Scrubber
+                Column(modifier = Modifier.fillMaxWidth(0.86f)) {
+                    Slider(
+                        value = sliderPosition,
+                        onValueChange = {
+                            isUserDragging = true
+                            sliderPosition = it
+                        },
+                        onValueChangeFinished = {
+                            isUserDragging = false
+                            onSeek((sliderPosition * effectiveDurationMs).toLong())
+                        },
+                        colors = SliderDefaults.colors(
+                            thumbColor = Color.White,
+                            activeTrackColor = Color.White,
+                            inactiveTrackColor = Color(0x38FFFFFF)
+                        ),
+                        modifier = Modifier.fillMaxWidth().height(26.dp)
+                    )
                     Row(
                         modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceEvenly,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        IconButton(onClick = onPrevious) {
-                            Icon(Icons.Default.SkipPrevious, null, tint = Color.White, modifier = Modifier.size(28.dp))
-                        }
-                        IconButton(
-                            onClick = onTogglePlayPause,
-                            modifier = Modifier
-                                .size(48.dp)
-                                .clip(CircleShape)
-                                .background(Color.White)
-                        ) {
-                            Icon(
-                                imageVector = if (isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
-                                contentDescription = null,
-                                tint = Color.Black,
-                                modifier = Modifier.size(28.dp)
-                            )
-                        }
-                        IconButton(onClick = onNext) {
-                            Icon(Icons.Default.SkipNext, null, tint = Color.White, modifier = Modifier.size(28.dp))
-                        }
-                        IconButton(onClick = onToggleLike) {
-                            Icon(
-                                imageVector = if (isLiked) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
-                                contentDescription = "Like",
-                                tint = if (isLiked) RessoAccent else Color.White,
-                                modifier = Modifier.size(24.dp)
-                            )
-                        }
-                    }
-
-                    // Timing Offset Calibration Bar
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clip(RoundedCornerShape(14.dp))
-                            .background(Color(0x25FFFFFF))
-                            .padding(horizontal = 8.dp, vertical = 4.dp),
-                        verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
-                        Text(
-                            text = "Sync Calibrate",
-                            fontFamily = DinProFamily,
-                            fontSize = 11.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = Color(0xAAFFFFFF)
+                        Text(formatTimeMs(currentPositionMs), fontFamily = DinProFamily, fontSize = 11.sp, color = Color(0x88FFFFFF))
+                        val remaining = (effectiveDurationMs - currentPositionMs).coerceAtLeast(0L)
+                        Text("-${formatTimeMs(remaining)}", fontFamily = DinProFamily, fontSize = 11.sp, color = Color(0x88FFFFFF))
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(6.dp))
+
+                // Clean Borderless Transport Controls
+                Row(
+                    modifier = Modifier.fillMaxWidth(0.76f),
+                    horizontalArrangement = Arrangement.SpaceEvenly,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    IconButton(onClick = onPrevious, modifier = Modifier.size(40.dp)) {
+                        Icon(Icons.Default.SkipPrevious, null, tint = Color.White, modifier = Modifier.size(28.dp))
+                    }
+                    IconButton(onClick = onTogglePlayPause, modifier = Modifier.size(48.dp)) {
+                        Icon(
+                            imageVector = if (isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
+                            contentDescription = null,
+                            tint = Color.White,
+                            modifier = Modifier.size(34.dp)
                         )
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            LiquidGlassPill(
-                                onClick = { onAdjustLyricsOffset(-500L) },
-                                modifier = Modifier.padding(end = 4.dp)
-                            ) {
-                                Text("-0.5s", fontFamily = DinProFamily, fontSize = 11.sp, color = Color.White)
-                            }
-                            LiquidGlassPill(
-                                onClick = onResetLyricsOffset,
-                                modifier = Modifier.padding(end = 4.dp)
-                            ) {
-                                val sec = lyricsOffsetMs / 1000.0
-                                Text("${if (sec >= 0) "+" else ""}${sec}s", fontFamily = DinProFamily, fontSize = 11.sp, fontWeight = FontWeight.Bold, color = RessoAccent)
-                            }
-                            LiquidGlassPill(
-                                onClick = { onAdjustLyricsOffset(+500L) }
-                            ) {
-                                Text("+0.5s", fontFamily = DinProFamily, fontSize = 11.sp, color = Color.White)
-                            }
-                        }
+                    }
+                    IconButton(onClick = onNext, modifier = Modifier.size(40.dp)) {
+                        Icon(Icons.Default.SkipNext, null, tint = Color.White, modifier = Modifier.size(28.dp))
                     }
                 }
             }
 
-            // RIGHT PANE: Synced Lyrics Overlay with Calibrated Offset
-            LiquidGlassCard(
+            // RIGHT COLUMN (~62%): Large Left-Aligned Apple Music–Style Animated Lyrics
+            Box(
                 modifier = Modifier
-                    .weight(0.52f)
+                    .weight(0.62f)
                     .fillMaxHeight(),
-                shape = RoundedCornerShape(24.dp),
-                backgroundColor = Color(0x35191825),
-                borderBrush = LiquidGlassColors.GlassBorderBrush
+                contentAlignment = Alignment.Center
             ) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(16.dp)
-                ) {
-                    Text(
-                        text = "Synchronized Lyrics",
-                        fontFamily = DinProFamily,
-                        fontSize = 15.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = Color.White
-                    )
-                    Spacer(modifier = Modifier.height(8.dp))
-                    SyncedLyricsOverlay(
-                        lyrics = lyrics,
-                        currentPositionMs = currentPositionMs + lyricsOffsetMs,
-                        onLineClick = onSeek,
-                        modifier = Modifier.fillMaxSize()
-                    )
-                }
+                SyncedLyricsOverlay(
+                    lyrics = lyrics,
+                    currentPositionMs = currentPositionMs + lyricsOffsetMs,
+                    onLineClick = onSeek,
+                    textAlign = TextAlign.Start,
+                    activeFontSize = 27.sp,
+                    inactiveFontSize = 22.sp,
+                    contentPadding = PaddingValues(vertical = 100.dp),
+                    scrollOffset = -180,
+                    modifier = Modifier.fillMaxSize()
+                )
             }
         }
     }

@@ -35,6 +35,8 @@ import androidx.compose.material.icons.filled.DeleteOutline
 import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.GraphicEq
+import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.MusicNote
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Shuffle
@@ -104,6 +106,7 @@ fun LibraryScreen(
     var showCreatePlaylistDialog by remember { mutableStateOf(false) }
     var loadingYtPlaylistId by remember { mutableStateOf<String?>(null) }
     var activeMixTarget by remember { mutableStateOf<Triple<String, String, List<Track>>?>(null) }
+    var isYtPlaylistsExpanded by remember { mutableStateOf(false) }
     val tasteSheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
 
     // Handle back button when either banner view is open
@@ -135,6 +138,7 @@ fun LibraryScreen(
                     onPlayTracks(likedSongs.map { it.toTrack() }, idx)
                 }
             },
+            onRemoveSong = { song -> libraryViewModel.unlikeSong(song.videoId) },
             modifier = modifier
         )
     } else if (isDownloadedSongsBannerOpen) {
@@ -214,7 +218,7 @@ fun LibraryScreen(
                 modifier = Modifier
                     .fillMaxSize()
                     .weight(1f),
-                contentPadding = PaddingValues(start = 20.dp, end = 20.dp, top = 8.dp, bottom = 120.dp),
+                contentPadding = PaddingValues(start = 20.dp, end = 20.dp, top = 8.dp, bottom = 190.dp),
                 verticalArrangement = Arrangement.spacedBy(14.dp)
             ) {
                 // AI Music Taste & Playlist Migration Liquid Glass Quick Actions
@@ -331,12 +335,14 @@ fun LibraryScreen(
                     }
                 }
 
-                // YouTube Music remote library section
+                // YouTube Music remote library section (collapsible via arrow button)
                 if (selectedTab == LibraryTab.ALL || selectedTab == LibraryTab.PLAYLISTS) {
                     item {
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
+                                .clip(RoundedCornerShape(10.dp))
+                                .clickable { isYtPlaylistsExpanded = !isYtPlaylistsExpanded }
                                 .padding(top = 8.dp, bottom = 4.dp),
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.SpaceBetween
@@ -352,7 +358,7 @@ fun LibraryScreen(
                                 Spacer(modifier = Modifier.width(8.dp))
                                 Surface(
                                     shape = RoundedCornerShape(6.dp),
-                                    color = Color(0xFFFF0050)
+                                    color = RessoAccent
                                 ) {
                                     Text(
                                         text = "SYNCED",
@@ -364,60 +370,75 @@ fun LibraryScreen(
                                     )
                                 }
                             }
-                            if (ytPlaylists.isNotEmpty()) {
-                                Text(
-                                    text = "${ytPlaylists.size} playlists",
-                                    fontFamily = DinProFamily,
-                                    fontSize = 12.sp,
-                                    color = Color(0x88FFFFFF)
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                if (ytPlaylists.isNotEmpty()) {
+                                    Text(
+                                        text = "${ytPlaylists.size} playlists",
+                                        fontFamily = DinProFamily,
+                                        fontSize = 12.sp,
+                                        color = Color(0x88FFFFFF)
+                                    )
+                                    Spacer(modifier = Modifier.width(4.dp))
+                                }
+                                Icon(
+                                    imageVector = if (isYtPlaylistsExpanded) {
+                                        Icons.Default.KeyboardArrowUp
+                                    } else {
+                                        Icons.Default.KeyboardArrowDown
+                                    },
+                                    contentDescription = if (isYtPlaylistsExpanded) "Hide YouTube Playlists" else "Show YouTube Playlists",
+                                    tint = Color(0xCCFFFFFF),
+                                    modifier = Modifier.size(22.dp)
                                 )
                             }
                         }
                     }
 
-                    if (ytPlaylists.isNotEmpty()) {
-                        items(ytPlaylists) { ytPlaylist ->
-                            val isItemLoading = loadingYtPlaylistId == ytPlaylist.browseId
-                            YtPlaylistListItem(
-                                playlist = ytPlaylist,
-                                isLoading = isItemLoading,
-                                onPlay = {
-                                    loadingYtPlaylistId = ytPlaylist.browseId
-                                    libraryViewModel.playYtPlaylist(ytPlaylist) { tracks ->
-                                        loadingYtPlaylistId = null
-                                        if (tracks.isNotEmpty()) {
-                                            onPlayTracks(tracks, 0)
+                    if (isYtPlaylistsExpanded) {
+                        if (ytPlaylists.isNotEmpty()) {
+                            items(ytPlaylists) { ytPlaylist ->
+                                val isItemLoading = loadingYtPlaylistId == ytPlaylist.browseId
+                                YtPlaylistListItem(
+                                    playlist = ytPlaylist,
+                                    isLoading = isItemLoading,
+                                    onPlay = {
+                                        loadingYtPlaylistId = ytPlaylist.browseId
+                                        libraryViewModel.playYtPlaylist(ytPlaylist) { tracks ->
+                                            loadingYtPlaylistId = null
+                                            if (tracks.isNotEmpty()) {
+                                                onPlayTracks(tracks, 0)
+                                            }
                                         }
                                     }
-                                }
-                            )
-                        }
-                    } else if (selectedTab == LibraryTab.PLAYLISTS) {
-                        item {
-                            Surface(
-                                shape = RoundedCornerShape(12.dp),
-                                color = Color(0xFF181720),
-                                modifier = Modifier.fillMaxWidth()
-                            ) {
-                                Column(
-                                    modifier = Modifier.padding(16.dp),
-                                    horizontalAlignment = Alignment.CenterHorizontally
+                                )
+                            }
+                        } else if (selectedTab == LibraryTab.PLAYLISTS) {
+                            item {
+                                Surface(
+                                    shape = RoundedCornerShape(12.dp),
+                                    color = Color(0xFF181720),
+                                    modifier = Modifier.fillMaxWidth()
                                 ) {
-                                    Text(
-                                        text = "No YouTube Music Playlists",
-                                        fontFamily = DinProFamily,
-                                        fontSize = 15.sp,
-                                        fontWeight = FontWeight.SemiBold,
-                                        color = Color.White
-                                    )
-                                    Spacer(modifier = Modifier.height(4.dp))
-                                    Text(
-                                        text = "Sign in to your YouTube Music account in Settings to sync your cloud library.",
-                                        fontFamily = DinProFamily,
-                                        fontSize = 12.sp,
-                                        color = Color(0x88FFFFFF),
-                                        textAlign = androidx.compose.ui.text.style.TextAlign.Center
-                                    )
+                                    Column(
+                                        modifier = Modifier.padding(16.dp),
+                                        horizontalAlignment = Alignment.CenterHorizontally
+                                    ) {
+                                        Text(
+                                            text = "No YouTube Music Playlists",
+                                            fontFamily = DinProFamily,
+                                            fontSize = 15.sp,
+                                            fontWeight = FontWeight.SemiBold,
+                                            color = Color.White
+                                        )
+                                        Spacer(modifier = Modifier.height(4.dp))
+                                        Text(
+                                            text = "Sign in to your YouTube Music account in Settings to sync your cloud library.",
+                                            fontFamily = DinProFamily,
+                                            fontSize = 12.sp,
+                                            color = Color(0x88FFFFFF),
+                                            textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                                        )
+                                    }
                                 }
                             }
                         }
@@ -672,6 +693,7 @@ fun LikedSongsBannerExpandedView(
     onShuffleAll: () -> Unit,
     onPlayTrack: (Track) -> Unit = {},
     onPlayTrackAtIndex: (Int) -> Unit = { idx -> onPlayTrack(likedSongs[idx].toTrack()) },
+    onRemoveSong: (SongEntity) -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     Column(
@@ -712,12 +734,12 @@ fun LikedSongsBannerExpandedView(
             }
         }
 
-        // Header Banner Card
+        // Compact Header Banner Card
         Surface(
-            shape = RoundedCornerShape(18.dp),
+            shape = RoundedCornerShape(16.dp),
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 6.dp)
+                .padding(horizontal = 16.dp, vertical = 4.dp)
         ) {
             Box(
                 modifier = Modifier
@@ -725,12 +747,12 @@ fun LikedSongsBannerExpandedView(
                     .background(
                         Brush.linearGradient(
                             colors = listOf(
-                                Color(0xFF5E115D),
-                                Color(0xFFFF0050)
+                                Color(0xFF4A1049),
+                                RessoAccent.copy(alpha = 0.85f)
                             )
                         )
                     )
-                    .padding(20.dp)
+                    .padding(horizontal = 16.dp, vertical = 14.dp)
             ) {
                 Column {
                     Row(
@@ -740,88 +762,53 @@ fun LikedSongsBannerExpandedView(
                     ) {
                         Box(
                             modifier = Modifier
-                                .size(48.dp)
+                                .size(36.dp)
                                 .clip(CircleShape)
-                                .background(Color(0x33FFFFFF)),
+                                .background(Color(0x28FFFFFF)),
                             contentAlignment = Alignment.Center
                         ) {
                             Icon(
                                 imageVector = Icons.Default.Favorite,
                                 contentDescription = null,
                                 tint = Color.White,
-                                modifier = Modifier.size(26.dp)
+                                modifier = Modifier.size(18.dp)
                             )
                         }
 
                         if (likedSongs.isNotEmpty()) {
                             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                OutlinedButton(
-                                    onClick = onShuffleAll,
-                                    colors = ButtonDefaults.outlinedButtonColors(
-                                        contentColor = Color.White
-                                    ),
-                                    shape = CircleShape,
-                                    contentPadding = PaddingValues(horizontal = 14.dp, vertical = 6.dp)
-                                ) {
-                                    Icon(
-                                        imageVector = Icons.Default.Shuffle,
-                                        contentDescription = "Shuffle",
-                                        tint = Color.White,
-                                        modifier = Modifier.size(16.dp)
-                                    )
-                                    Spacer(modifier = Modifier.width(4.dp))
-                                    Text(
-                                        text = "Shuffle",
-                                        fontFamily = DinProFamily,
-                                        fontWeight = FontWeight.SemiBold,
-                                        fontSize = 13.sp
-                                    )
-                                }
-
-                                Button(
-                                    onClick = onPlayAll,
-                                    colors = ButtonDefaults.buttonColors(
-                                        containerColor = RessoAccent,
-                                        contentColor = Color.White
-                                    ),
-                                    shape = CircleShape,
-                                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 6.dp)
-                                ) {
-                                    Icon(
-                                        imageVector = Icons.Default.PlayArrow,
-                                        contentDescription = "Play All",
-                                        tint = Color.White,
-                                        modifier = Modifier.size(18.dp)
-                                    )
-                                    Spacer(modifier = Modifier.width(4.dp))
-                                    Text(
-                                        text = "Play All",
-                                        fontFamily = DinProFamily,
-                                        fontWeight = FontWeight.Bold,
-                                        fontSize = 13.sp
-                                    )
-                                }
+                                CompactBannerPill(
+                                    text = "Shuffle",
+                                    icon = Icons.Default.Shuffle,
+                                    containerColor = Color(0x2AFFFFFF),
+                                    contentColor = Color.White,
+                                    onClick = onShuffleAll
+                                )
+                                CompactBannerPill(
+                                    text = "Play All",
+                                    icon = Icons.Default.PlayArrow,
+                                    containerColor = Color.White,
+                                    contentColor = Color.Black,
+                                    onClick = onPlayAll
+                                )
                             }
                         }
                     }
 
-                    Spacer(modifier = Modifier.height(14.dp))
+                    Spacer(modifier = Modifier.height(10.dp))
 
                     Text(
                         text = "Your Favorited Tracks",
                         fontFamily = DinProFamily,
-                        fontSize = 20.sp,
+                        fontSize = 17.sp,
                         fontWeight = FontWeight.Bold,
                         color = Color.White
                     )
-
-                    Spacer(modifier = Modifier.height(2.dp))
-
                     Text(
-                        text = "All tracks you've hearted in Skim are collected right here.",
+                        text = "${likedSongs.size} tracks saved",
                         fontFamily = DinProFamily,
                         fontSize = 12.sp,
-                        color = Color(0xCCFFFFFF)
+                        color = Color(0xBBFFFFFF)
                     )
                 }
             }
@@ -841,14 +828,15 @@ fun LikedSongsBannerExpandedView(
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(horizontal = 16.dp),
-                contentPadding = PaddingValues(top = 4.dp, bottom = 120.dp),
+                contentPadding = PaddingValues(top = 4.dp, bottom = 190.dp),
                 verticalArrangement = Arrangement.spacedBy(10.dp)
             ) {
                 items(likedSongs) { song ->
                     val songIndex = likedSongs.indexOf(song).coerceAtLeast(0)
                     SongListItem(
                         song = song,
-                        onPlay = { onPlayTrackAtIndex(songIndex) }
+                        onPlay = { onPlayTrackAtIndex(songIndex) },
+                        onDelete = { onRemoveSong(song) }
                     )
                 }
             }
@@ -879,12 +867,12 @@ fun LikedSongsHeroCard(
                 .background(
                     Brush.linearGradient(
                         colors = listOf(
-                            Color(0xFF5E115D),
-                            Color(0xFFFF0050)
+                            Color(0xFF4A1049),
+                            RessoAccent.copy(alpha = 0.85f)
                         )
                     )
                 )
-                .padding(20.dp)
+                .padding(horizontal = 16.dp, vertical = 14.dp)
         ) {
             Column {
                 Row(
@@ -894,16 +882,16 @@ fun LikedSongsHeroCard(
                 ) {
                     Box(
                         modifier = Modifier
-                            .size(44.dp)
+                            .size(36.dp)
                             .clip(CircleShape)
-                            .background(Color(0x33FFFFFF)),
+                            .background(Color(0x28FFFFFF)),
                         contentAlignment = Alignment.Center
                     ) {
                         Icon(
                             imageVector = Icons.Default.Favorite,
                             contentDescription = null,
                             tint = Color.White,
-                            modifier = Modifier.size(24.dp)
+                            modifier = Modifier.size(18.dp)
                         )
                     }
 
@@ -912,65 +900,47 @@ fun LikedSongsHeroCard(
                         horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
                         if (count > 0) {
-                            Button(
-                                onClick = onPlayAll,
-                                colors = ButtonDefaults.buttonColors(
-                                    containerColor = RessoAccent,
-                                    contentColor = Color.White
-                                ),
-                                shape = CircleShape,
-                                contentPadding = PaddingValues(horizontal = 14.dp, vertical = 6.dp)
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.PlayArrow,
-                                    contentDescription = "Play",
-                                    tint = Color.White,
-                                    modifier = Modifier.size(16.dp)
-                                )
-                                Spacer(modifier = Modifier.width(4.dp))
-                                Text(
-                                    text = "Play",
-                                    fontFamily = DinProFamily,
-                                    fontWeight = FontWeight.Bold,
-                                    fontSize = 12.sp
-                                )
-                            }
+                            CompactBannerPill(
+                                text = "Play",
+                                icon = Icons.Default.PlayArrow,
+                                containerColor = Color.White,
+                                contentColor = Color.Black,
+                                onClick = onPlayAll
+                            )
                         }
 
                         Surface(
                             shape = CircleShape,
-                            color = Color(0x33FFFFFF),
-                            modifier = Modifier.size(32.dp)
+                            color = Color(0x28FFFFFF),
+                            modifier = Modifier.size(28.dp)
                         ) {
                             Box(contentAlignment = Alignment.Center) {
                                 Icon(
                                     imageVector = Icons.AutoMirrored.Filled.ArrowForward,
                                     contentDescription = "Open Banner",
                                     tint = Color.White,
-                                    modifier = Modifier.size(16.dp)
+                                    modifier = Modifier.size(14.dp)
                                 )
                             }
                         }
                     }
                 }
 
-                Spacer(modifier = Modifier.height(16.dp))
+                Spacer(modifier = Modifier.height(10.dp))
 
                 Text(
                     text = "Liked Songs",
                     fontFamily = DinProFamily,
-                    fontSize = 22.sp,
+                    fontSize = 18.sp,
                     fontWeight = FontWeight.Bold,
                     color = Color.White
                 )
 
-                Spacer(modifier = Modifier.height(4.dp))
-
                 Text(
-                    text = "$count tracks saved • Tap banner to view all",
+                    text = "$count tracks saved",
                     fontFamily = DinProFamily,
-                    fontSize = 13.sp,
-                    color = Color(0xCCFFFFFF)
+                    fontSize = 12.sp,
+                    color = Color(0xBBFFFFFF)
                 )
             }
         }
@@ -1006,7 +976,7 @@ fun DownloadedSongsHeroCard(
                         )
                     )
                 )
-                .padding(20.dp)
+                .padding(horizontal = 16.dp, vertical = 14.dp)
         ) {
             Column {
                 Row(
@@ -1016,16 +986,16 @@ fun DownloadedSongsHeroCard(
                 ) {
                     Box(
                         modifier = Modifier
-                            .size(44.dp)
+                            .size(36.dp)
                             .clip(CircleShape)
-                            .background(Color(0x33FFFFFF)),
+                            .background(Color(0x28FFFFFF)),
                         contentAlignment = Alignment.Center
                     ) {
                         Icon(
                             imageVector = Icons.Default.Download,
                             contentDescription = null,
                             tint = Color(0xFF00F2FE),
-                            modifier = Modifier.size(24.dp)
+                            modifier = Modifier.size(18.dp)
                         )
                     }
 
@@ -1034,49 +1004,33 @@ fun DownloadedSongsHeroCard(
                         horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
                         if (count > 0) {
-                            Button(
-                                onClick = onPlayAll,
-                                colors = ButtonDefaults.buttonColors(
-                                    containerColor = RessoAccent,
-                                    contentColor = Color.White
-                                ),
-                                shape = CircleShape,
-                                contentPadding = PaddingValues(horizontal = 14.dp, vertical = 6.dp)
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.PlayArrow,
-                                    contentDescription = "Play",
-                                    tint = Color.White,
-                                    modifier = Modifier.size(16.dp)
-                                )
-                                Spacer(modifier = Modifier.width(4.dp))
-                                Text(
-                                    text = "Play",
-                                    fontFamily = DinProFamily,
-                                    fontWeight = FontWeight.Bold,
-                                    fontSize = 12.sp
-                                )
-                            }
+                            CompactBannerPill(
+                                text = "Play",
+                                icon = Icons.Default.PlayArrow,
+                                containerColor = Color.White,
+                                contentColor = Color.Black,
+                                onClick = onPlayAll
+                            )
                         }
 
                         Surface(
                             shape = CircleShape,
-                            color = Color(0x33FFFFFF),
-                            modifier = Modifier.size(32.dp)
+                            color = Color(0x28FFFFFF),
+                            modifier = Modifier.size(28.dp)
                         ) {
                             Box(contentAlignment = Alignment.Center) {
                                 Icon(
                                     imageVector = Icons.AutoMirrored.Filled.ArrowForward,
                                     contentDescription = "Open Downloads Banner",
                                     tint = Color.White,
-                                    modifier = Modifier.size(16.dp)
+                                    modifier = Modifier.size(14.dp)
                                 )
                             }
                         }
                     }
                 }
 
-                Spacer(modifier = Modifier.height(16.dp))
+                Spacer(modifier = Modifier.height(10.dp))
 
                 Text(
                     text = "Downloaded Songs",
@@ -1179,12 +1133,12 @@ fun DownloadedSongsBannerExpandedView(
             }
         }
 
-        // Header Banner Card
+        // Compact Header Banner Card
         Surface(
-            shape = RoundedCornerShape(18.dp),
+            shape = RoundedCornerShape(16.dp),
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 6.dp)
+                .padding(horizontal = 16.dp, vertical = 4.dp)
         ) {
             Box(
                 modifier = Modifier
@@ -1198,7 +1152,7 @@ fun DownloadedSongsBannerExpandedView(
                             )
                         )
                     )
-                    .padding(20.dp)
+                    .padding(horizontal = 16.dp, vertical = 14.dp)
             ) {
                 Column {
                     Row(
@@ -1208,88 +1162,53 @@ fun DownloadedSongsBannerExpandedView(
                     ) {
                         Box(
                             modifier = Modifier
-                                .size(48.dp)
+                                .size(36.dp)
                                 .clip(CircleShape)
-                                .background(Color(0x33FFFFFF)),
+                                .background(Color(0x28FFFFFF)),
                             contentAlignment = Alignment.Center
                         ) {
                             Icon(
                                 imageVector = Icons.Default.Download,
                                 contentDescription = null,
                                 tint = Color(0xFF00F2FE),
-                                modifier = Modifier.size(26.dp)
+                                modifier = Modifier.size(18.dp)
                             )
                         }
 
                         if (downloadedSongs.isNotEmpty()) {
                             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                OutlinedButton(
-                                    onClick = onShuffleAll,
-                                    colors = ButtonDefaults.outlinedButtonColors(
-                                        contentColor = Color.White
-                                    ),
-                                    shape = CircleShape,
-                                    contentPadding = PaddingValues(horizontal = 14.dp, vertical = 6.dp)
-                                ) {
-                                    Icon(
-                                        imageVector = Icons.Default.Shuffle,
-                                        contentDescription = "Shuffle",
-                                        tint = Color.White,
-                                        modifier = Modifier.size(16.dp)
-                                    )
-                                    Spacer(modifier = Modifier.width(4.dp))
-                                    Text(
-                                        text = "Shuffle",
-                                        fontFamily = DinProFamily,
-                                        fontWeight = FontWeight.SemiBold,
-                                        fontSize = 13.sp
-                                    )
-                                }
-
-                                Button(
-                                    onClick = onPlayAll,
-                                    colors = ButtonDefaults.buttonColors(
-                                        containerColor = RessoAccent,
-                                        contentColor = Color.White
-                                    ),
-                                    shape = CircleShape,
-                                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 6.dp)
-                                ) {
-                                    Icon(
-                                        imageVector = Icons.Default.PlayArrow,
-                                        contentDescription = "Play All",
-                                        tint = Color.White,
-                                        modifier = Modifier.size(18.dp)
-                                    )
-                                    Spacer(modifier = Modifier.width(4.dp))
-                                    Text(
-                                        text = "Play All",
-                                        fontFamily = DinProFamily,
-                                        fontWeight = FontWeight.Bold,
-                                        fontSize = 13.sp
-                                    )
-                                }
+                                CompactBannerPill(
+                                    text = "Shuffle",
+                                    icon = Icons.Default.Shuffle,
+                                    containerColor = Color(0x2AFFFFFF),
+                                    contentColor = Color.White,
+                                    onClick = onShuffleAll
+                                )
+                                CompactBannerPill(
+                                    text = "Play All",
+                                    icon = Icons.Default.PlayArrow,
+                                    containerColor = Color.White,
+                                    contentColor = Color.Black,
+                                    onClick = onPlayAll
+                                )
                             }
                         }
                     }
 
-                    Spacer(modifier = Modifier.height(14.dp))
+                    Spacer(modifier = Modifier.height(10.dp))
 
                     Text(
                         text = "Offline Downloads",
                         fontFamily = DinProFamily,
-                        fontSize = 20.sp,
+                        fontSize = 17.sp,
                         fontWeight = FontWeight.Bold,
                         color = Color.White
                     )
-
-                    Spacer(modifier = Modifier.height(2.dp))
-
                     Text(
-                        text = "Listen anywhere with zero network or data usage. Tap trash icon to delete.",
+                        text = "${downloadedSongs.size} tracks offline",
                         fontFamily = DinProFamily,
                         fontSize = 12.sp,
-                        color = Color(0xCCFFFFFF)
+                        color = Color(0xBBFFFFFF)
                     )
                 }
             }
@@ -1309,7 +1228,7 @@ fun DownloadedSongsBannerExpandedView(
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(horizontal = 16.dp),
-                contentPadding = PaddingValues(top = 4.dp, bottom = 120.dp),
+                contentPadding = PaddingValues(top = 4.dp, bottom = 190.dp),
                 verticalArrangement = Arrangement.spacedBy(10.dp)
             ) {
                 items(downloadedSongs) { song ->
@@ -1368,7 +1287,7 @@ fun YtPlaylistListItem(
                     Icon(
                         imageVector = Icons.AutoMirrored.Filled.QueueMusic,
                         contentDescription = null,
-                        tint = Color(0xFFFF0050),
+                        tint = RessoAccent,
                         modifier = Modifier.size(24.dp)
                     )
                 }
@@ -1413,7 +1332,7 @@ fun YtPlaylistListItem(
             ) {
                 if (isLoading) {
                     CircularProgressIndicator(
-                        color = Color(0xFFFF0050),
+                        color = RessoAccent,
                         strokeWidth = 2.dp,
                         modifier = Modifier.size(16.dp)
                     )
@@ -1427,6 +1346,40 @@ fun YtPlaylistListItem(
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun CompactBannerPill(
+    text: String,
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    containerColor: Color,
+    contentColor: Color,
+    onClick: () -> Unit
+) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier
+            .height(30.dp)
+            .clip(CircleShape)
+            .background(containerColor)
+            .clickable(onClick = onClick)
+            .padding(horizontal = 12.dp)
+    ) {
+        Icon(
+            imageVector = icon,
+            contentDescription = text,
+            tint = contentColor,
+            modifier = Modifier.size(15.dp)
+        )
+        Spacer(modifier = Modifier.width(4.dp))
+        Text(
+            text = text,
+            fontFamily = DinProFamily,
+            fontWeight = FontWeight.SemiBold,
+            fontSize = 12.sp,
+            color = contentColor
+        )
     }
 }
 
@@ -1516,33 +1469,26 @@ fun SongListItem(
             if (onDelete != null) {
                 IconButton(
                     onClick = onDelete,
-                    modifier = Modifier
-                        .size(34.dp)
-                        .clip(CircleShape)
-                        .background(Color(0x22FF4D4F))
+                    modifier = Modifier.size(30.dp)
                 ) {
                     Icon(
                         imageVector = Icons.Default.DeleteOutline,
-                        contentDescription = "Delete Download",
-                        tint = Color(0xFFFF4D4F),
+                        contentDescription = "Remove",
+                        tint = Color(0x88FFFFFF),
                         modifier = Modifier.size(18.dp)
                     )
                 }
-                Spacer(modifier = Modifier.width(6.dp))
             }
 
             IconButton(
                 onClick = onPlay,
-                modifier = Modifier
-                    .size(34.dp)
-                    .clip(CircleShape)
-                    .background(Color(0xFF2B2A36))
+                modifier = Modifier.size(30.dp)
             ) {
                 Icon(
                     imageVector = Icons.Default.PlayArrow,
                     contentDescription = "Play",
                     tint = Color.White,
-                    modifier = Modifier.size(18.dp)
+                    modifier = Modifier.size(20.dp)
                 )
             }
         }
@@ -1588,7 +1534,7 @@ fun PlaylistListItem(
                     Icon(
                         imageVector = Icons.AutoMirrored.Filled.QueueMusic,
                         contentDescription = null,
-                        tint = Color(0xFFFF0050),
+                        tint = RessoAccent,
                         modifier = Modifier.size(24.dp)
                     )
                 }

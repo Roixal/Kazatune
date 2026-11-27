@@ -30,6 +30,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -117,6 +118,7 @@ fun MainRootScreen(
 ) {
     val context = LocalContext.current
     var currentTab by rememberSaveable { mutableStateOf(MainTab.SKIM) }
+    var isFullscreenLyrics by remember { mutableStateOf(false) }
     val nowPlaying by skimViewModel.nowPlaying.collectAsStateWithLifecycle()
     val controlState by skimViewModel.controlState.collectAsStateWithLifecycle()
 
@@ -140,7 +142,10 @@ fun MainRootScreen(
         // Tab Content
         Box(modifier = Modifier.fillMaxSize()) {
             when (currentTab) {
-                MainTab.SKIM -> SkimScreen(skimViewModel = skimViewModel)
+                MainTab.SKIM -> SkimScreen(
+                    skimViewModel = skimViewModel,
+                    onFullscreenLyricsChange = { isFullscreenLyrics = it }
+                )
                 MainTab.SEARCH -> SearchScreen(
                     onPlayTrack = { track ->
                         skimViewModel.playTrackAndStartRadio(track)
@@ -165,9 +170,9 @@ fun MainRootScreen(
             }
         }
 
-        // Bottom Bar & Mini Player Bar (hidden in landscape mode for clean player view)
+        // Bottom Bar & Mini Player Bar (hidden in landscape mode or fullscreen lyrics)
         val isLandscape = LocalConfiguration.current.orientation == Configuration.ORIENTATION_LANDSCAPE
-        if (!isLandscape) {
+        if (!isLandscape && !(currentTab == MainTab.SKIM && isFullscreenLyrics)) {
             Column(
                 modifier = Modifier.align(Alignment.BottomCenter)
             ) {

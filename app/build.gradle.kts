@@ -11,8 +11,8 @@ android {
         applicationId = "com.kazatune"
         minSdk = 26
         targetSdk = 36
-        versionCode = 5
-        versionName = "1.0.4"
+        versionCode = 6
+        versionName = "1.1.5"
         multiDexEnabled = true
         vectorDrawables.useSupportLibrary = true
     }
@@ -85,6 +85,7 @@ dependencies {
     // Image loading (Spotify canvas fallback & album art)
     implementation(libs.coil.compose)
     implementation(libs.coil.network.okhttp)
+    implementation("androidx.palette:palette-ktx:1.0.0")
 
     // Dependency Injection (Koin)
     implementation(libs.koin.android)

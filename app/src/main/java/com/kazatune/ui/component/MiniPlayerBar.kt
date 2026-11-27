@@ -37,6 +37,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
 import com.kazatune.ui.theme.DinProFamily
+import com.kazatune.ui.theme.RessoAccent
 import com.maxrave.domain.mediaservice.handler.NowPlayingTrackState
 
 @Composable
@@ -93,7 +94,7 @@ fun MiniPlayerBar(
                         Icon(
                             imageVector = Icons.Default.MusicNote,
                             contentDescription = null,
-                            tint = Color(0xFFFF0050),
+                            tint = RessoAccent,
                             modifier = Modifier.size(24.dp)
                         )
                     }
@@ -132,7 +133,7 @@ fun MiniPlayerBar(
                     modifier = Modifier
                         .size(38.dp)
                         .clip(CircleShape)
-                        .background(Color(0xFFFF0050))
+                        .background(RessoAccent)
                 ) {
                     Icon(
                         imageVector = if (isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,

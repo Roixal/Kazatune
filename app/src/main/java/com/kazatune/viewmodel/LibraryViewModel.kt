@@ -148,7 +148,15 @@ class LibraryViewModel(
         }
     }
 
+    fun unlikeSong(videoId: String) {
+        _likedSongs.value = _likedSongs.value.filterNot { it.videoId == videoId }
+        viewModelScope.launch(Dispatchers.IO) {
+            songRepository.updateLikeStatus(videoId, 0)
+        }
+    }
+
     fun deleteDownload(videoId: String) {
+        _downloadedSongs.value = _downloadedSongs.value.filterNot { it.videoId == videoId }
         viewModelScope.launch(Dispatchers.IO) {
             downloadHandler.removeDownload(videoId)
             songRepository.updateDownloadState(videoId, DownloadState.STATE_NOT_DOWNLOADED)
@@ -156,10 +164,11 @@ class LibraryViewModel(
     }
 
     fun deleteAllDownloads() {
+        val list = _downloadedSongs.value
+        _downloadedSongs.value = emptyList()
         viewModelScope.launch(Dispatchers.IO) {
-            val list = _downloadedSongs.value
+            downloadHandler.removeAllDownloads()
             for (song in list) {
-                downloadHandler.removeDownload(song.videoId)
                 songRepository.updateDownloadState(song.videoId, DownloadState.STATE_NOT_DOWNLOADED)
             }
         }
@@ -174,26 +183,6 @@ class LibraryViewModel(
             )
             localPlaylistRepository.insertLocalPlaylist(newPlaylist, "Playlist created").collect { }
         }
-    }
-
-    fun playSong(song: SongEntity) {
-        mediaPlayerHandler.clearMediaItems()
-        mediaPlayerHandler.addMediaItem(song.toGenericMediaItem(), playWhenReady = true)
-    }
-
-    fun playAll(songs: List<SongEntity>) {
-        if (songs.isEmpty()) return
-        mediaPlayerHandler.clearMediaItems()
-        mediaPlayerHandler.addMediaItemList(songs.map { it.toGenericMediaItem() })
-        mediaPlayerHandler.playMediaItemInMediaSource(0)
-    }
-
-    fun shuffleAll(songs: List<SongEntity>) {
-        if (songs.isEmpty()) return
-        val shuffled = songs.shuffled()
-        mediaPlayerHandler.clearMediaItems()
-        mediaPlayerHandler.addMediaItemList(shuffled.map { it.toGenericMediaItem() })
-        mediaPlayerHandler.playMediaItemInMediaSource(0)
     }
 
     fun playYtPlaylist(playlist: PlaylistsResult, onTracksLoaded: (List<Track>) -> Unit) {
@@ -281,17 +270,6 @@ class LibraryViewModel(
                 withContext(Dispatchers.Main) {
                     onLoaded(emptyList())
                 }
-            }
-        }
-    }
-
-    fun togglePlaylistMix(playlistId: String) {
-        val updated = playlistMixManager.toggleMix(playlistId)
-        viewModelScope.launch(Dispatchers.IO) {
-            if (playlistMixManager.activeMixPlaylistId.value == playlistId) {
-                playlistMixManager.applyMixForPlayback(playlistId, dataStoreManager)
-            } else if (updated.mixEnabled) {
-                playlistMixManager.applyMixForPlayback(playlistId, dataStoreManager)
             }
         }
     }

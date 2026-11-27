@@ -14,6 +14,7 @@ class SkimMusicApp : Application() {
 
     override fun onCreate() {
         super.onCreate()
+        com.kazatune.ui.theme.AppAccentState.init(this)
 
         // Privacy-friendly telemetry via Aptabase
         try {
@@ -25,7 +26,7 @@ class SkimMusicApp : Application() {
 
         val identity = AppIdentity(
             applicationId = packageName,
-            versionName = "1.0.4",
+            versionName = "1.1.5",
             platform = "Android",
             isDevBuild = false
         )

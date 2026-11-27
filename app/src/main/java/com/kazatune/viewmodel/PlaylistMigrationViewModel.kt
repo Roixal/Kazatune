@@ -132,7 +132,7 @@ class PlaylistMigrationViewModel(
                         }
 
                         val (spotifyTitle, spotifyQueries) = spotifyResult
-                        val resolvedTracks = resolveQueriesToTracks(spotifyQueries)
+                        val resolvedTracks = resolveTrackQueries(spotifyQueries)
 
                         if (resolvedTracks.isEmpty()) {
                             _migrationState.value = MigrationState.Error("Could not match any Spotify tracks on YouTube Music.")
@@ -176,22 +176,50 @@ class PlaylistMigrationViewModel(
         }
     }
 
+    private data class TrackQuery(
+        val title: String,
+        val artist: String = "",
+        val durationSec: Int? = null
+    ) {
+        val displayQuery: String
+            get() = if (artist.isNotBlank()) "$title $artist" else title
+    }
+
     private suspend fun resolveQueriesToTracks(queries: List<String>): List<Track> {
+        val structured = queries.map { raw ->
+            val parts = raw.split(" - ", " – ", limit = 2)
+            if (parts.size == 2) TrackQuery(parts[0].trim(), parts[1].trim())
+            else TrackQuery(raw.trim())
+        }
+        return resolveTrackQueries(structured)
+    }
+
+    private suspend fun resolveTrackQueries(queries: List<TrackQuery>): List<Track> {
         val resolvedTracks = mutableListOf<Track>()
         val total = queries.size
 
         queries.forEachIndexed { index, query ->
             _migrationState.value = MigrationState.Processing(
-                progress = "Matching \"$query\"...",
+                progress = "Matching \"${query.title}\"...",
                 current = index + 1,
                 total = total
             )
 
             try {
-                val searchRes = searchRepository.getSearchDataSong(query).firstOrNull { it is Resource.Success || it is Resource.Error }
-                val topMatch = searchRes?.data?.firstOrNull()?.toTrack()
-                if (topMatch != null) {
-                    resolvedTracks.add(topMatch)
+                val primaryArtist = query.artist.split(",").firstOrNull()?.trim().orEmpty()
+                val primarySearch = if (primaryArtist.isNotBlank()) "${query.title} $primaryArtist" else query.title
+                var bestMatch = searchAndScoreBestTrack(primarySearch, query)
+
+                if (bestMatch == null) {
+                    val cleanedTitle = cleanTrackTitleForSearch(query.title)
+                    val fallbackSearch = if (primaryArtist.isNotBlank()) "$cleanedTitle $primaryArtist" else cleanedTitle
+                    if (fallbackSearch != primarySearch && fallbackSearch.isNotBlank()) {
+                        bestMatch = searchAndScoreBestTrack(fallbackSearch, query.copy(title = cleanedTitle))
+                    }
+                }
+
+                if (bestMatch != null) {
+                    resolvedTracks.add(bestMatch)
                 }
             } catch (e: Exception) {
                 e.printStackTrace()
@@ -200,7 +228,91 @@ class PlaylistMigrationViewModel(
         return resolvedTracks
     }
 
-    private fun fetchSpotifyPlaylistTracks(rawUrl: String): Pair<String, List<String>>? {
+    private suspend fun searchAndScoreBestTrack(searchText: String, target: TrackQuery): Track? {
+        val searchRes = searchRepository.getSearchDataSong(searchText)
+            .firstOrNull { it is Resource.Success || it is Resource.Error }
+        val candidates = searchRes?.data.orEmpty()
+        if (candidates.isEmpty()) return null
+
+        val scored = candidates.mapNotNull { candidate ->
+            val score = scoreCandidate(candidate, target)
+            candidate to score
+        }.maxByOrNull { it.second } ?: return null
+
+        // Require a minimum relevance threshold so random/unrelated songs are never imported
+        val minThreshold = if (target.artist.isNotBlank()) 35 else 25
+        return if (scored.second >= minThreshold) scored.first.toTrack() else null
+    }
+
+    private fun scoreCandidate(candidate: SongsResult, target: TrackQuery): Int {
+        val candTitle = normalizeText(candidate.title.orEmpty())
+        val targetTitle = normalizeText(target.title)
+        if (candTitle.isBlank() || targetTitle.isBlank()) return -100
+
+        var score = 0
+
+        // 1. Title similarity
+        when {
+            candTitle == targetTitle -> score += 60
+            candTitle.contains(targetTitle) || targetTitle.contains(candTitle) -> score += 38
+            else -> {
+                val targetTokens = targetTitle.split(" ").filter { it.length > 1 }.toSet()
+                val candTokens = candTitle.split(" ").filter { it.length > 1 }.toSet()
+                if (targetTokens.isNotEmpty()) {
+                    val overlap = targetTokens.intersect(candTokens).size.toFloat() / targetTokens.size
+                    score += (overlap * 35).toInt()
+                }
+            }
+        }
+
+        // 2. Artist similarity
+        if (target.artist.isNotBlank()) {
+            val targetArtists = target.artist.split(",").map { normalizeText(it) }.filter { it.isNotBlank() }
+            val candArtists = candidate.artists?.mapNotNull { normalizeText(it.name.orEmpty()).takeIf { n -> n.isNotBlank() } }.orEmpty()
+            val artistMatched = targetArtists.any { ta ->
+                candArtists.any { ca -> ca == ta || ca.contains(ta) || ta.contains(ca) }
+            }
+            if (artistMatched) score += 35 else score -= 15
+        }
+
+        // 3. Duration match (when available)
+        val targetDur = target.durationSec
+        val candDur = candidate.durationSeconds
+        if (targetDur != null && targetDur > 0 && candDur != null && candDur > 0) {
+            val diff = kotlin.math.abs(targetDur - candDur)
+            when {
+                diff <= 5 -> score += 20
+                diff <= 12 -> score += 10
+                diff > 45 -> score -= 25
+            }
+        }
+
+        // 4. Penalize unwanted covers/remixes unless requested in original title
+        val unwantedTags = listOf("karaoke", "instrumental", "8d audio", "slowed", "reverb", "nightcore", "sped up")
+        for (tag in unwantedTags) {
+            if (candTitle.contains(tag) && !targetTitle.contains(tag)) {
+                score -= 40
+            }
+        }
+
+        return score
+    }
+
+    private fun cleanTrackTitleForSearch(title: String): String {
+        return title
+            .replace(Regex("""(?i)\s*[\(\[](feat\.?|ft\.?|with|remaster(?:ed)?|explicit|album\s*version)[^\)\]]*[\)\]]"""), "")
+            .replace(Regex("""(?i)\s*-\s*(remaster(?:ed)?|single\s*version|radio\s*edit).*$"""), "")
+            .trim()
+    }
+
+    private fun normalizeText(input: String): String {
+        return input.lowercase()
+            .replace(Regex("""[^\p{L}\p{N}\s]"""), " ")
+            .replace(Regex("""\s+"""), " ")
+            .trim()
+    }
+
+    private fun fetchSpotifyPlaylistTracks(rawUrl: String): Pair<String, List<TrackQuery>>? {
         return try {
             var resolvedUrl = rawUrl.lines().firstOrNull { it.contains("http") }?.trim() ?: rawUrl.trim()
             if (resolvedUrl.contains("spotify.link") || resolvedUrl.contains("spoti.fi")) {
@@ -239,13 +351,15 @@ class PlaylistMigrationViewModel(
 
             val title = entity.optString("name", "").ifBlank { entity.optString("title", "Spotify Playlist") }
             val trackList = entity.optJSONArray("trackList") ?: return null
-            val queries = mutableListOf<String>()
+            val queries = mutableListOf<TrackQuery>()
             for (i in 0 until trackList.length()) {
                 val item = trackList.getJSONObject(i)
                 val trackTitle = item.optString("title", "").replace('\u00A0', ' ').trim()
                 val subtitle = item.optString("subtitle", "").replace('\u00A0', ' ').trim()
+                val durationMs = item.optInt("duration", 0)
+                val durationSec = if (durationMs > 0) durationMs / 1000 else null
                 if (trackTitle.isNotBlank()) {
-                    queries.add(if (subtitle.isNotBlank()) "$trackTitle $subtitle" else trackTitle)
+                    queries.add(TrackQuery(title = trackTitle, artist = subtitle, durationSec = durationSec))
                 }
             }
             Pair(title, queries)

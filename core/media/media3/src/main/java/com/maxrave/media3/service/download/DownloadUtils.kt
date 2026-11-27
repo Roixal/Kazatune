@@ -265,13 +265,18 @@ internal class DownloadUtils(
     }
 
     override fun removeDownload(videoId: String) {
+        _downloads.update { it.toMutableMap().apply { remove(videoId) } }
+        _downloadTask.update { it.toMutableMap().apply { remove(videoId) } }
+        downloadingVideoIds.update { it.toMutableSet().apply { remove(videoId) } }
+        downloadManager.removeDownload(videoId)
+        val id = MERGING_DATA_TYPE.VIDEO + videoId
+        downloadManager.removeDownload(id)
         DownloadService.sendRemoveDownload(
             context,
             MusicDownloadService::class.java,
             videoId,
             false,
         )
-        val id = MERGING_DATA_TYPE.VIDEO + videoId
         DownloadService.sendRemoveDownload(
             context,
             MusicDownloadService::class.java,
@@ -305,6 +310,8 @@ internal class DownloadUtils(
                             null to Download.STATE_COMPLETED -> DownloadState.STATE_DOWNLOADING
                             null to Download.STATE_QUEUED -> DownloadState.STATE_PREPARING
                             null to Download.STATE_FAILED -> DownloadState.STATE_NOT_DOWNLOADED
+                            Download.STATE_REMOVING to null -> DownloadState.STATE_NOT_DOWNLOADED
+                            Download.STATE_REMOVING to Download.STATE_REMOVING -> DownloadState.STATE_NOT_DOWNLOADED
                             else -> DownloadState.STATE_DOWNLOADING
                         }
                     _downloadTask.update {

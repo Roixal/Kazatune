@@ -314,6 +314,18 @@ interface DataStoreManager {
 
     suspend fun setTidalClientId(value: String)
 
+    val blacklistedTrackIds: Flow<Set<String>>
+
+    suspend fun blacklistTrack(videoId: String)
+
+    suspend fun unblacklistTrack(videoId: String)
+
+    val blacklistedArtists: Flow<Set<String>>
+
+    suspend fun blacklistArtist(artistName: String)
+
+    suspend fun unblacklistArtist(artistName: String)
+
     val tidalClientSecret: Flow<String>
 
     suspend fun setTidalClientSecret(value: String)

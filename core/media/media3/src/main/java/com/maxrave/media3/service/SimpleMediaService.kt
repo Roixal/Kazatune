@@ -4,9 +4,12 @@ import android.app.Activity
 import android.app.ActivityManager
 import android.app.ActivityManager.RunningAppProcessInfo
 import android.app.PendingIntent
+import android.content.BroadcastReceiver
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
+import android.content.IntentFilter
+import android.media.AudioManager
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.os.Binder
@@ -47,6 +50,16 @@ internal class SimpleMediaService :
     private val simpleMediaSessionCallback: MediaLibrarySession.Callback by inject<MediaLibrarySession.Callback>()
 
     private val simpleMediaServiceHandler: MediaPlayerHandler by inject<MediaPlayerHandler>()
+
+    private val becomingNoisyReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context?, intent: Intent?) {
+            if (intent?.action == AudioManager.ACTION_AUDIO_BECOMING_NOISY) {
+                Logger.w("Service", "ACTION_AUDIO_BECOMING_NOISY received: pausing player")
+                player.pause()
+            }
+        }
+    }
+    private var isNoisyReceiverRegistered = false
 
     private val binder = MusicBinder()
 
@@ -125,6 +138,14 @@ internal class SimpleMediaService :
                 commandButtonList,
             )
         }
+
+        try {
+            val noisyFilter = IntentFilter(AudioManager.ACTION_AUDIO_BECOMING_NOISY)
+            registerReceiver(becomingNoisyReceiver, noisyFilter)
+            isNoisyReceiverRegistered = true
+        } catch (e: Exception) {
+            Logger.e("Service", "Error registering becoming noisy receiver: ${e.message}")
+        }
     }
 
     @UnstableApi
@@ -162,6 +183,16 @@ internal class SimpleMediaService :
                 // Release handler (contains coroutines and jobs, which also releases the adapter)
                 simpleMediaServiceHandler.release()
                 mediaSession = null
+
+                if (isNoisyReceiverRegistered) {
+                    try {
+                        unregisterReceiver(becomingNoisyReceiver)
+                    } catch (e: Exception) {
+                        Logger.e("Service", "Error unregistering becoming noisy receiver: ${e.message}")
+                    }
+                    isNoisyReceiverRegistered = false
+                }
+
                 Logger.w("Service", "Simple Media Service Released")
             } catch (e: Exception) {
                 Logger.e("Service", "Error during release")
