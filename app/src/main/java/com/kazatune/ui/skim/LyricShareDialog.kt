@@ -15,12 +15,14 @@ import android.text.Layout
 import android.text.StaticLayout
 import android.text.TextPaint
 import androidx.core.content.FileProvider
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
@@ -46,6 +48,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
@@ -77,6 +80,7 @@ import coil3.request.allowHardware
 import coil3.toBitmap
 import com.kazatune.ui.theme.DinProFamily
 import com.kazatune.ui.theme.RessoAccent
+import com.kazatune.ui.theme.RessoOnAccent
 import com.maxrave.domain.data.model.browse.album.Track
 import com.maxrave.domain.data.model.metadata.Lyrics
 import kotlinx.coroutines.Dispatchers
@@ -84,6 +88,13 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
 import java.io.FileOutputStream
+
+private enum class LyricCardFormat(val label: String, val maxLines: Int) {
+    VERTICAL("Portrait (8 lines)", 8),
+    LANDSCAPE("Landscape (4 lines)", 4)
+}
+
+private const val SKIM_DOWNLOAD_URL = "https://github.com/Roixal/Kazatune/releases/tag/Stable"
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -97,6 +108,7 @@ fun LyricShareDialog(
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val lines = lyrics?.lines ?: emptyList()
 
+    var cardFormat by remember { mutableStateOf(LyricCardFormat.VERTICAL) }
     val selectedLineIndices = remember { mutableStateListOf<Int>() }
     var isGenerating by remember { mutableStateOf(false) }
 
@@ -145,19 +157,56 @@ fun LyricShareDialog(
                 }
             }
 
-            // 9:16 Card Preview
+            // Format Selector (Portrait 8 lines vs Landscape 4 lines)
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = 10.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                LyricCardFormat.entries.forEach { format ->
+                    val isSelected = cardFormat == format
+                    Surface(
+                        shape = RoundedCornerShape(12.dp),
+                        color = if (isSelected) RessoAccent else Color(0xFF1E1D26),
+                        modifier = Modifier
+                            .weight(1f)
+                            .clickable {
+                                cardFormat = format
+                                if (format == LyricCardFormat.LANDSCAPE && selectedLineIndices.size > 4) {
+                                    val trimmed = selectedLineIndices.sorted().take(4)
+                                    selectedLineIndices.clear()
+                                    selectedLineIndices.addAll(trimmed)
+                                }
+                            }
+                    ) {
+                        Text(
+                            text = format.label,
+                            fontFamily = DinProFamily,
+                            fontSize = 12.sp,
+                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                            color = if (isSelected) RessoOnAccent else Color(0xCCFFFFFF),
+                            textAlign = TextAlign.Center,
+                            modifier = Modifier.padding(vertical = 8.dp, horizontal = 10.dp)
+                        )
+                    }
+                }
+            }
+
+            // Card Preview
             val selectedText = if (selectedLineIndices.isNotEmpty()) {
                 selectedLineIndices.sorted().joinToString("\n") { lines[it].words }
             } else {
                 lines.firstOrNull()?.words ?: track.title
             }
+            val selectedLineCount = selectedText.lines().size
 
             Surface(
                 shape = RoundedCornerShape(16.dp),
                 color = Color(0xFF1C1B24),
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(210.dp)
+                    .height(if (cardFormat == LyricCardFormat.LANDSCAPE) 170.dp else 210.dp)
             ) {
                 Box(modifier = Modifier.fillMaxSize()) {
                     // Blurred Artwork Backdrop
@@ -190,11 +239,11 @@ fun LyricShareDialog(
                         Text(
                             text = "\"$selectedText\"",
                             fontFamily = DinProFamily,
-                            fontSize = 17.sp,
+                            fontSize = if (cardFormat == LyricCardFormat.VERTICAL && selectedLineCount > 4) 13.sp else 16.sp,
                             fontWeight = FontWeight.Bold,
                             color = Color.White,
-                            lineHeight = 24.sp,
-                            maxLines = 4,
+                            lineHeight = if (cardFormat == LyricCardFormat.VERTICAL && selectedLineCount > 4) 18.sp else 22.sp,
+                            maxLines = cardFormat.maxLines,
                             overflow = TextOverflow.Ellipsis
                         )
 
@@ -244,7 +293,7 @@ fun LyricShareDialog(
             Spacer(modifier = Modifier.height(14.dp))
 
             Text(
-                text = "Tap up to 4 lines to quote:",
+                text = "Tap up to ${cardFormat.maxLines} lines to quote:",
                 fontFamily = DinProFamily,
                 fontSize = 13.sp,
                 fontWeight = FontWeight.Medium,
@@ -275,7 +324,7 @@ fun LyricShareDialog(
                             .clickable {
                                 if (isSelected) {
                                     selectedLineIndices.remove(index)
-                                } else if (selectedLineIndices.size < 4) {
+                                } else if (selectedLineIndices.size < cardFormat.maxLines) {
                                     selectedLineIndices.add(index)
                                 }
                             }
@@ -294,83 +343,143 @@ fun LyricShareDialog(
 
             Spacer(modifier = Modifier.height(12.dp))
 
-            // Share Action Button (9:16 Story Card)
-            Button(
-                onClick = {
-                    if (isGenerating) return@Button
-                    isGenerating = true
-                    scope.launch {
-                        try {
-                            val bitmap = generateLyricStoryBitmap(context, track, selectedText)
-                            val cacheDir = File(context.cacheDir, "shared")
-                            if (!cacheDir.exists()) cacheDir.mkdirs()
-                            val imageFile = File(cacheDir, "skim_lyric_story.png")
-                            FileOutputStream(imageFile).use { out ->
-                                bitmap.compress(Bitmap.CompressFormat.PNG, 100, out)
-                            }
-                            val contentUri = FileProvider.getUriForFile(
-                                context,
-                                "${context.packageName}.fileprovider",
-                                imageFile
-                            )
-                            val shareIntent = Intent(Intent.ACTION_SEND).apply {
-                                type = "image/png"
-                                putExtra(Intent.EXTRA_STREAM, contentUri)
-                                putExtra(
-                                    Intent.EXTRA_TEXT,
-                                    "\"$selectedText\"\n\n— ${track.title} on Skim Music"
-                                )
+            val shareText = "\"$selectedText\"\n\n— ${track.title} on Skim Music\nDownload Skim Music to listen to ${track.title} ad free: $SKIM_DOWNLOAD_URL"
+
+            fun launchShare(toInstagramStory: Boolean) {
+                if (isGenerating) return
+                isGenerating = true
+                scope.launch {
+                    try {
+                        val bitmap = if (cardFormat == LyricCardFormat.LANDSCAPE) {
+                            generateLyricLandscapeBitmap(context, track, selectedText)
+                        } else {
+                            generateLyricStoryBitmap(context, track, selectedText)
+                        }
+                        val cacheDir = File(context.cacheDir, "shared")
+                        if (!cacheDir.exists()) cacheDir.mkdirs()
+                        val fileName = if (cardFormat == LyricCardFormat.LANDSCAPE) {
+                            "skim_lyric_landscape.png"
+                        } else {
+                            "skim_lyric_story.png"
+                        }
+                        val imageFile = File(cacheDir, fileName)
+                        FileOutputStream(imageFile).use { out ->
+                            bitmap.compress(Bitmap.CompressFormat.PNG, 100, out)
+                        }
+                        val contentUri = FileProvider.getUriForFile(
+                            context,
+                            "${context.packageName}.fileprovider",
+                            imageFile
+                        )
+                        if (toInstagramStory) {
+                            val igIntent = Intent("com.instagram.share.ADD_TO_STORY").apply {
+                                setDataAndType(contentUri, "image/png")
+                                putExtra("content_url", SKIM_DOWNLOAD_URL)
+                                putExtra("top_background_color", "#121118")
+                                putExtra("bottom_background_color", "#08070C")
                                 addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
                             }
-                            context.startActivity(Intent.createChooser(shareIntent, "Share Story to Instagram / WhatsApp"))
-                            onDismissRequest()
-                        } catch (e: Exception) {
-                            e.printStackTrace()
-                            // Fallback to text share
-                            val shareText = "\"$selectedText\"\n\n— ${track.title} on Skim Music\nDownload Skim: https://github.com/Roixal/Kazatune/releases/tag/Stable"
-                            val shareIntent = Intent(Intent.ACTION_SEND).apply {
-                                type = "text/plain"
-                                putExtra(Intent.EXTRA_TEXT, shareText)
+                            if (igIntent.resolveActivity(context.packageManager) != null) {
+                                context.grantUriPermission(
+                                    "com.instagram.android",
+                                    contentUri,
+                                    Intent.FLAG_GRANT_READ_URI_PERMISSION
+                                )
+                                context.startActivity(igIntent)
+                                onDismissRequest()
+                                return@launch
                             }
-                            context.startActivity(Intent.createChooser(shareIntent, "Share Lyric Card"))
-                            onDismissRequest()
-                        } finally {
-                            isGenerating = false
                         }
+                        val shareIntent = Intent(Intent.ACTION_SEND).apply {
+                            type = "image/png"
+                            putExtra(Intent.EXTRA_STREAM, contentUri)
+                            putExtra(Intent.EXTRA_TEXT, shareText)
+                            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                        }
+                        context.startActivity(Intent.createChooser(shareIntent, "Share Lyric Card"))
+                        onDismissRequest()
+                    } catch (e: Exception) {
+                        e.printStackTrace()
+                        val fallbackIntent = Intent(Intent.ACTION_SEND).apply {
+                            type = "text/plain"
+                            putExtra(Intent.EXTRA_TEXT, shareText)
+                        }
+                        context.startActivity(Intent.createChooser(fallbackIntent, "Share Lyric Card"))
+                        onDismissRequest()
+                    } finally {
+                        isGenerating = false
                     }
-                },
-                enabled = !isGenerating,
-                colors = ButtonDefaults.buttonColors(containerColor = RessoAccent),
-                shape = RoundedCornerShape(24.dp),
+                }
+            }
+
+            // Share Action Row: Instagram Story (clickable tile) + General Share
+            Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(48.dp)
-                    .padding(bottom = 6.dp)
+                    .padding(bottom = 8.dp),
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
             ) {
-                if (isGenerating) {
-                    CircularProgressIndicator(
-                        modifier = Modifier.size(18.dp),
-                        color = Color.White,
-                        strokeWidth = 2.dp
-                    )
-                    Spacer(modifier = Modifier.width(10.dp))
+                OutlinedButton(
+                    onClick = { launchShare(toInstagramStory = true) },
+                    enabled = !isGenerating,
+                    border = BorderStroke(1.dp, RessoAccent),
+                    shape = RoundedCornerShape(24.dp),
+                    contentPadding = PaddingValues(horizontal = 12.dp),
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(46.dp)
+                ) {
                     Text(
-                        text = "Rendering Story Card...",
+                        text = "Instagram Story",
                         fontFamily = DinProFamily,
-                        fontSize = 15.sp,
+                        fontSize = 13.sp,
                         fontWeight = FontWeight.Bold,
-                        color = Color.White
+                        color = RessoAccent,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
                     )
-                } else {
-                    Icon(Icons.Default.Share, contentDescription = null, modifier = Modifier.size(18.dp))
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text(
-                        text = "Share 9:16 Story (Instagram / WhatsApp)",
-                        fontFamily = DinProFamily,
-                        fontSize = 15.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = Color.White
-                    )
+                }
+
+                Button(
+                    onClick = { launchShare(toInstagramStory = false) },
+                    enabled = !isGenerating,
+                    colors = ButtonDefaults.buttonColors(containerColor = RessoAccent, contentColor = RessoOnAccent),
+                    shape = RoundedCornerShape(24.dp),
+                    contentPadding = PaddingValues(horizontal = 14.dp),
+                    modifier = Modifier
+                        .weight(1.15f)
+                        .height(46.dp)
+                ) {
+                    if (isGenerating) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(16.dp),
+                            color = RessoOnAccent,
+                            strokeWidth = 2.dp
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = "Rendering...",
+                            fontFamily = DinProFamily,
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = RessoOnAccent
+                        )
+                    } else {
+                        Icon(
+                            Icons.Default.Share,
+                            contentDescription = null,
+                            tint = RessoOnAccent,
+                            modifier = Modifier.size(17.dp)
+                        )
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text(
+                            text = "Share Card",
+                            fontFamily = DinProFamily,
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = RessoOnAccent
+                        )
+                    }
                 }
             }
         }
@@ -463,9 +572,10 @@ private suspend fun generateLyricStoryBitmap(
     canvas.drawCircle(880f, 1500f, 550f, glowPaintCyan)
 
     // 5. High-Res Central Album Art (rounded rect)
-    val artSize = 440f
+    val isLongQuote = selectedQuote.lines().size > 4
+    val artSize = if (isLongQuote) 360f else 440f
     val artLeft = (width - artSize) / 2f
-    val artTop = 260f
+    val artTop = if (isLongQuote) 170f else 260f
     val artRight = artLeft + artSize
     val artBottom = artTop + artSize
     val artRadius = 36f
@@ -533,7 +643,7 @@ private suspend fun generateLyricStoryBitmap(
     val quotePaint = TextPaint().apply {
         isAntiAlias = true
         color = android.graphics.Color.WHITE
-        textSize = 46f
+        textSize = if (isLongQuote) 36f else 46f
         typeface = Typeface.create(Typeface.SANS_SERIF, Typeface.BOLD)
     }
     val margin = 110
@@ -545,7 +655,7 @@ private suspend fun generateLyricStoryBitmap(
         quotePaint,
         quoteLayoutWidth
     ).setAlignment(Layout.Alignment.ALIGN_CENTER)
-        .setLineSpacing(16f, 1.25f)
+        .setLineSpacing(if (isLongQuote) 10f else 16f, 1.2f)
         .build()
 
     canvas.save()
@@ -588,12 +698,202 @@ private suspend fun generateLyricStoryBitmap(
 
     val footerSubPaint = TextPaint().apply {
         isAntiAlias = true
-        color = android.graphics.Color.argb(110, 255, 255, 255)
+        color = android.graphics.Color.argb(140, 255, 255, 255)
         textSize = 22f
         typeface = Typeface.create(Typeface.SANS_SERIF, Typeface.NORMAL)
         textAlign = Paint.Align.CENTER
     }
-    canvas.drawText("Play songs seamlessly on Skim", width / 2f, badgeBottom + 40f, footerSubPaint)
+    canvas.drawText("Download Skim Music to listen ad free", width / 2f, badgeBottom + 40f, footerSubPaint)
+
+    bitmap
+}
+
+/**
+ * Renders a 16:9 landscape (1920x1080) lyric quote card with up to 4 lines.
+ */
+private suspend fun generateLyricLandscapeBitmap(
+    context: Context,
+    track: Track,
+    selectedQuote: String
+): Bitmap = withContext(Dispatchers.IO) {
+    val width = 1920
+    val height = 1080
+    val bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
+    val canvas = Canvas(bitmap)
+
+    var albumBitmap: Bitmap? = null
+    val artUrl = track.thumbnails?.lastOrNull()?.url
+    if (!artUrl.isNullOrEmpty()) {
+        try {
+            val req = ImageRequest.Builder(context)
+                .data(artUrl)
+                .allowHardware(false)
+                .build()
+            albumBitmap = (ImageLoader(context).execute(req) as? SuccessResult)?.image?.toBitmap()
+        } catch (_: Exception) {}
+    }
+
+    val baseBgPaint = Paint().apply {
+        shader = LinearGradient(
+            0f, 0f, width.toFloat(), height.toFloat(),
+            intArrayOf(
+                android.graphics.Color.rgb(18, 17, 24),
+                android.graphics.Color.rgb(11, 10, 16),
+                android.graphics.Color.rgb(8, 7, 12)
+            ),
+            null,
+            Shader.TileMode.CLAMP
+        )
+    }
+    canvas.drawRect(0f, 0f, width.toFloat(), height.toFloat(), baseBgPaint)
+
+    if (albumBitmap != null) {
+        val src = Rect(0, 0, albumBitmap.width, albumBitmap.height)
+        val dst = Rect(0, 0, width, height)
+        canvas.drawBitmap(albumBitmap, src, dst, Paint(Paint.FILTER_BITMAP_FLAG))
+
+        val scrimPaint = Paint().apply {
+            shader = LinearGradient(
+                0f, 0f, width.toFloat(), 0f,
+                intArrayOf(
+                    android.graphics.Color.argb(235, 10, 9, 14),
+                    android.graphics.Color.argb(225, 14, 13, 20),
+                    android.graphics.Color.argb(245, 8, 7, 11)
+                ),
+                floatArrayOf(0f, 0.45f, 1f),
+                Shader.TileMode.CLAMP
+            )
+        }
+        canvas.drawRect(0f, 0f, width.toFloat(), height.toFloat(), scrimPaint)
+    }
+
+    // Left column: Album Art + Track Metadata
+    val artSize = 460f
+    val artLeft = 140f
+    val artTop = 180f
+    val artRight = artLeft + artSize
+    val artBottom = artTop + artSize
+    val artRadius = 32f
+
+    if (albumBitmap != null) {
+        canvas.save()
+        val artPath = Path().apply {
+            addRoundRect(RectF(artLeft, artTop, artRight, artBottom), artRadius, artRadius, Path.Direction.CW)
+        }
+        canvas.clipPath(artPath)
+        canvas.drawBitmap(
+            albumBitmap,
+            Rect(0, 0, albumBitmap.width, albumBitmap.height),
+            Rect(artLeft.toInt(), artTop.toInt(), artRight.toInt(), artBottom.toInt()),
+            Paint(Paint.FILTER_BITMAP_FLAG)
+        )
+        canvas.restore()
+
+        val borderPaint = Paint().apply {
+            style = Paint.Style.STROKE
+            strokeWidth = 3f
+            color = android.graphics.Color.argb(80, 255, 255, 255)
+            isAntiAlias = true
+        }
+        canvas.drawRoundRect(RectF(artLeft, artTop, artRight, artBottom), artRadius, artRadius, borderPaint)
+    }
+
+    val centerLeftX = artLeft + artSize / 2f
+    val titlePaint = TextPaint().apply {
+        isAntiAlias = true
+        color = android.graphics.Color.WHITE
+        textSize = 38f
+        typeface = Typeface.create(Typeface.SANS_SERIF, Typeface.BOLD)
+        textAlign = Paint.Align.CENTER
+    }
+    val titleText = if (track.title.length > 26) track.title.take(23) + "..." else track.title
+    canvas.drawText(titleText, centerLeftX, artBottom + 64f, titlePaint)
+
+    val artistPaint = TextPaint().apply {
+        isAntiAlias = true
+        color = android.graphics.Color.argb(180, 255, 255, 255)
+        textSize = 28f
+        typeface = Typeface.create(Typeface.SANS_SERIF, Typeface.NORMAL)
+        textAlign = Paint.Align.CENTER
+    }
+    val artistsStr = track.artists?.joinToString(", ") { it.name ?: "" } ?: ""
+    val artistText = if (artistsStr.length > 32) artistsStr.take(29) + "..." else artistsStr
+    canvas.drawText(artistText, centerLeftX, artBottom + 108f, artistPaint)
+
+    // Right column: Quote Symbol + 4-Line Lyric Quote + Skim Badge
+    val rightMarginLeft = 710f
+    val rightLayoutWidth = (width - rightMarginLeft - 120f).toInt()
+
+    val quoteIconPaint = TextPaint().apply {
+        isAntiAlias = true
+        color = android.graphics.Color.rgb(255, 0, 80)
+        textSize = 96f
+        typeface = Typeface.create(Typeface.SERIF, Typeface.BOLD)
+    }
+    canvas.drawText("“", rightMarginLeft, 240f, quoteIconPaint)
+
+    val quotePaint = TextPaint().apply {
+        isAntiAlias = true
+        color = android.graphics.Color.WHITE
+        textSize = 50f
+        typeface = Typeface.create(Typeface.SANS_SERIF, Typeface.BOLD)
+    }
+    val quoteLines = selectedQuote.lines().take(4).joinToString("\n")
+    val staticLayout = StaticLayout.Builder.obtain(
+        quoteLines,
+        0,
+        quoteLines.length,
+        quotePaint,
+        rightLayoutWidth
+    ).setAlignment(Layout.Alignment.ALIGN_NORMAL)
+        .setLineSpacing(16f, 1.25f)
+        .build()
+
+    canvas.save()
+    canvas.translate(rightMarginLeft, 270f)
+    staticLayout.draw(canvas)
+    canvas.restore()
+
+    // Bottom right badge + download prompt
+    val badgeWidth = 360f
+    val badgeHeight = 68f
+    val badgeLeft = rightMarginLeft
+    val badgeTop = 870f
+    val badgeRight = badgeLeft + badgeWidth
+    val badgeBottom = badgeTop + badgeHeight
+    val badgeRadius = badgeHeight / 2f
+
+    val badgeBgPaint = Paint().apply {
+        isAntiAlias = true
+        color = android.graphics.Color.argb(45, 255, 0, 80)
+        style = Paint.Style.FILL
+    }
+    canvas.drawRoundRect(RectF(badgeLeft, badgeTop, badgeRight, badgeBottom), badgeRadius, badgeRadius, badgeBgPaint)
+
+    val badgeStrokePaint = Paint().apply {
+        isAntiAlias = true
+        color = android.graphics.Color.argb(120, 255, 0, 80)
+        style = Paint.Style.STROKE
+        strokeWidth = 2.5f
+    }
+    canvas.drawRoundRect(RectF(badgeLeft, badgeTop, badgeRight, badgeBottom), badgeRadius, badgeRadius, badgeStrokePaint)
+
+    val badgeTextPaint = TextPaint().apply {
+        isAntiAlias = true
+        color = android.graphics.Color.rgb(255, 0, 80)
+        textSize = 26f
+        typeface = Typeface.create(Typeface.SANS_SERIF, Typeface.BOLD)
+        textAlign = Paint.Align.CENTER
+    }
+    canvas.drawText("⚡ SKIM MUSIC", badgeLeft + badgeWidth / 2f, badgeTop + 44f, badgeTextPaint)
+
+    val footerSubPaint = TextPaint().apply {
+        isAntiAlias = true
+        color = android.graphics.Color.argb(150, 255, 255, 255)
+        textSize = 24f
+        typeface = Typeface.create(Typeface.SANS_SERIF, Typeface.NORMAL)
+    }
+    canvas.drawText("Download Skim Music to listen ad free", badgeRight + 28f, badgeTop + 44f, footerSubPaint)
 
     bitmap
 }

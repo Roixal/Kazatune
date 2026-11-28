@@ -119,7 +119,6 @@ class PlaylistMixManager(context: Context) {
         if (playlistId.isNullOrBlank()) return
         val settings = getSettings(playlistId)
         if (!settings.mixEnabled) {
-            dataStoreManager.setCrossfadeEnabled(false)
             return
         }
 

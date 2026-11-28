@@ -45,8 +45,11 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.kazatune.ui.theme.AppCardBackground
+import com.kazatune.ui.theme.AppCardBorder
 import com.kazatune.ui.theme.DinProFamily
 import com.kazatune.ui.theme.RessoAccent
+import com.kazatune.ui.theme.RessoOnAccent
 import com.kazatune.updater.UpdateRepository
 import com.kazatune.updater.model.UpdateStatus
 import com.kazatune.viewmodel.UpdateViewModel
@@ -63,7 +66,8 @@ fun AppUpdatesCard(
 
     Surface(
         shape = RoundedCornerShape(14.dp),
-        color = Color(0xFF181720),
+        color = AppCardBackground,
+        border = AppCardBorder,
         modifier = Modifier.fillMaxWidth()
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
@@ -304,7 +308,7 @@ fun AppUpdatesCard(
                                     context.startActivity(browserIntent)
                                 }
                             },
-                            colors = ButtonDefaults.buttonColors(containerColor = RessoAccent),
+                            colors = ButtonDefaults.buttonColors(containerColor = RessoAccent, contentColor = RessoOnAccent),
                             shape = RoundedCornerShape(10.dp),
                             modifier = Modifier.weight(1f)
                         ) {
@@ -348,7 +352,7 @@ fun AppUpdatesCard(
                     is UpdateStatus.ReadyToInstall -> {
                         Button(
                             onClick = { updateViewModel.triggerInstall(context, currentStatus.apkFile) },
-                            colors = ButtonDefaults.buttonColors(containerColor = RessoAccent),
+                            colors = ButtonDefaults.buttonColors(containerColor = RessoAccent, contentColor = RessoOnAccent),
                             shape = RoundedCornerShape(10.dp),
                             modifier = Modifier.fillMaxWidth()
                         ) {

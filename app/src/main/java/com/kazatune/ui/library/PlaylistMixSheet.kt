@@ -69,6 +69,7 @@ import com.kazatune.mix.PairTransition
 import com.kazatune.mix.PlaylistMixSettings
 import com.kazatune.ui.theme.DinProFamily
 import com.kazatune.ui.theme.RessoAccent
+import com.kazatune.ui.theme.RessoOnAccent
 import com.kazatune.viewmodel.TrackAudioMeta
 import com.maxrave.domain.data.model.browse.album.Track
 
@@ -217,7 +218,7 @@ fun PlaylistMixSheet(
                             onUpdateSettings(settings.copy(mixEnabled = enabled))
                         },
                         colors = SwitchDefaults.colors(
-                            checkedThumbColor = Color.White,
+                            checkedThumbColor = RessoOnAccent,
                             checkedTrackColor = RessoAccent,
                             uncheckedThumbColor = Color(0x88FFFFFF),
                             uncheckedTrackColor = Color(0xFF2B2A36)
@@ -259,7 +260,7 @@ fun PlaylistMixSheet(
                                     fontFamily = DinProFamily,
                                     fontSize = 12.sp,
                                     fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium,
-                                    color = Color.White,
+                                    color = if (selected) RessoOnAccent else Color.White,
                                     modifier = Modifier.padding(horizontal = 14.dp, vertical = 7.dp)
                                 )
                             }
@@ -346,7 +347,7 @@ fun PlaylistMixSheet(
                 enabled = tracks.isNotEmpty(),
                 colors = ButtonDefaults.buttonColors(
                     containerColor = RessoAccent,
-                    contentColor = Color.White
+                    contentColor = RessoOnAccent
                 ),
                 shape = CircleShape,
                 contentPadding = PaddingValues(vertical = 12.dp),

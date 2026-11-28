@@ -49,6 +49,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.kazatune.ui.theme.DinProFamily
 import com.kazatune.ui.theme.RessoAccent
+import com.kazatune.ui.theme.RessoOnAccent
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -292,7 +293,7 @@ fun SleepTimerBottomSheet(
                         }
                     },
                     enabled = (customMinutesText.toIntOrNull() ?: 0) > 0,
-                    colors = ButtonDefaults.buttonColors(containerColor = RessoAccent),
+                    colors = ButtonDefaults.buttonColors(containerColor = RessoAccent, contentColor = RessoOnAccent),
                     shape = RoundedCornerShape(14.dp),
                     modifier = Modifier.height(52.dp)
                 ) {

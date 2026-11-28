@@ -621,6 +621,10 @@ class SkimViewModel(
         viewModelScope.launch {
             mediaPlayerHandler.simpleMediaState.collectLatest { state ->
                 if (state is SimpleMediaState.Ended) {
+                    if (repeatState.value == RepeatState.One) {
+                        seekTo(0L)
+                        return@collectLatest
+                    }
                     val nextIdx = _currentIndex.value + 1
                     if (nextIdx < _tracks.value.size) {
                         playTrackAt(nextIdx)
@@ -638,7 +642,12 @@ class SkimViewModel(
                     } else {
                         val lastTrack = _tracks.value.lastOrNull()
                         if (lastTrack != null && !loadingMore) {
+                            val previousSize = _tracks.value.size
                             fetchRadioQueue(lastTrack.videoId, lastTrack)
+                            delay(800)
+                            if (_tracks.value.size > previousSize) {
+                                playTrackAt(previousSize)
+                            }
                         }
                     }
                 }

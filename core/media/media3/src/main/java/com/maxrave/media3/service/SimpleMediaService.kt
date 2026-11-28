@@ -217,11 +217,16 @@ internal class SimpleMediaService :
     @UnstableApi
     override fun onTaskRemoved(rootIntent: Intent?) {
         Logger.w("Service", "Simple Media Service Task Removed")
-        if (simpleMediaServiceHandler.shouldReleaseOnTaskRemoved()) {
-            release()
-            super.onTaskRemoved(rootIntent)
-            exitProcess(0)
+        try {
+            player.pause()
+            player.stop()
+        } catch (_: Exception) {
         }
+        release()
+        stopForeground(STOP_FOREGROUND_REMOVE)
+        stopSelf()
+        super.onTaskRemoved(rootIntent)
+        exitProcess(0)
     }
 
     // Can't inject by Koin because it depend on service

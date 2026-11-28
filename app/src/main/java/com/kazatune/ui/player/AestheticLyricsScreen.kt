@@ -15,6 +15,7 @@ import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -166,8 +167,27 @@ fun AestheticLyricsScreen(
     }
 
     var showCalibration by remember { mutableStateOf(false) }
+    var dragAccumulator by remember { mutableFloatStateOf(0f) }
 
-    Box(modifier = modifier.fillMaxSize()) {
+    Box(
+        modifier = modifier
+            .fillMaxSize()
+            .pointerInput(Unit) {
+                detectVerticalDragGestures(
+                    onDragStart = { dragAccumulator = 0f },
+                    onDragEnd = { dragAccumulator = 0f },
+                    onDragCancel = { dragAccumulator = 0f },
+                    onVerticalDrag = { change, dragAmount ->
+                        change.consume()
+                        dragAccumulator += dragAmount
+                        if (dragAccumulator > 90f) {
+                            dragAccumulator = 0f
+                            onClose()
+                        }
+                    }
+                )
+            }
+    ) {
         // ─── Layer 0: Dynamic Fluid Mesh Gradient (Palette API) ───
         DynamicFluidMesh(
             seedString = track.videoId,
@@ -215,7 +235,7 @@ fun AestheticLyricsScreen(
                 .background(
                     Brush.radialGradient(
                         colors = listOf(
-                            Color(0x18FF0050), // RessoAccent at ~9% opacity
+                            RessoAccent.copy(alpha = 0.09f),
                             Color.Transparent
                         ),
                         center = Offset(0.5f, 0.3f),

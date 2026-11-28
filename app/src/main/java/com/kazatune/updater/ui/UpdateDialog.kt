@@ -46,8 +46,11 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import com.kazatune.ui.theme.AppCardBackground
+import com.kazatune.ui.theme.AppCardBorder
 import com.kazatune.ui.theme.DinProFamily
 import com.kazatune.ui.theme.RessoAccent
+import com.kazatune.ui.theme.RessoOnAccent
 import com.kazatune.updater.model.ReleaseInfo
 import com.kazatune.updater.model.UpdateStatus
 import java.io.File
@@ -90,7 +93,8 @@ fun UpdateDialog(
                 .fillMaxWidth(0.92f)
                 .clip(RoundedCornerShape(24.dp))
                 .border(1.dp, Color(0x33FFFFFF), RoundedCornerShape(24.dp)),
-            color = Color(0xFF181720),
+            color = AppCardBackground,
+            border = AppCardBorder,
             shape = RoundedCornerShape(24.dp),
             shadowElevation = 16.dp
         ) {
@@ -348,7 +352,7 @@ fun UpdateDialog(
                     is UpdateStatus.ReadyToInstall -> {
                         Button(
                             onClick = { onInstall(status.apkFile) },
-                            colors = ButtonDefaults.buttonColors(containerColor = RessoAccent),
+                            colors = ButtonDefaults.buttonColors(containerColor = RessoAccent, contentColor = RessoOnAccent),
                             shape = RoundedCornerShape(12.dp),
                             modifier = Modifier.fillMaxWidth()
                         ) {
@@ -373,7 +377,7 @@ fun UpdateDialog(
                             if (status.canRetry) {
                                 Button(
                                     onClick = onRetry,
-                                    colors = ButtonDefaults.buttonColors(containerColor = RessoAccent),
+                                    colors = ButtonDefaults.buttonColors(containerColor = RessoAccent, contentColor = RessoOnAccent),
                                     shape = RoundedCornerShape(12.dp),
                                     modifier = Modifier.weight(1f)
                                 ) {
@@ -407,7 +411,7 @@ fun UpdateDialog(
 
                                     Button(
                                         onClick = { onDownload(release) },
-                                        colors = ButtonDefaults.buttonColors(containerColor = RessoAccent),
+                                        colors = ButtonDefaults.buttonColors(containerColor = RessoAccent, contentColor = RessoOnAccent),
                                         shape = RoundedCornerShape(12.dp),
                                         modifier = Modifier.weight(1f)
                                     ) {

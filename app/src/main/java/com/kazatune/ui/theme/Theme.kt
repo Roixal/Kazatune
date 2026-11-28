@@ -9,9 +9,9 @@ fun SkimMusicTheme(content: @Composable () -> Unit) {
     val colorScheme = darkColorScheme(
         primary = RessoAccent,
         secondary = RessoAccentCyan,
-        background = RessoBlack,
+        background = AppBackground,
         surface = RessoDarkSurface,
-        onPrimary = if (RessoAccent == RessoWhite) RessoBlack else RessoWhite,
+        onPrimary = RessoOnAccent,
         onSecondary = RessoBlack,
         onBackground = RessoWhite,
         onSurface = RessoWhite

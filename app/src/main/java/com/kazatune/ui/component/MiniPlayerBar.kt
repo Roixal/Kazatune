@@ -38,12 +38,14 @@ import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
 import com.kazatune.ui.theme.DinProFamily
 import com.kazatune.ui.theme.RessoAccent
+import com.kazatune.ui.theme.RessoOnAccent
 import com.maxrave.domain.mediaservice.handler.NowPlayingTrackState
 
 @Composable
 fun MiniPlayerBar(
     nowPlaying: NowPlayingTrackState,
     isPlaying: Boolean,
+    progress: Float = 0f,
     onTogglePlayPause: () -> Unit,
     onClick: () -> Unit,
     modifier: Modifier = Modifier
@@ -69,12 +71,28 @@ fun MiniPlayerBar(
             borderBrush = LiquidGlassColors.GlassBorderBrush,
             borderWidth = 1.dp
         ) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(8.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
+            Column(modifier = Modifier.fillMaxWidth()) {
+                // Thin 2.dp accent progress strip along the top edge
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(2.dp)
+                        .background(Color(0x1AFFFFFF))
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth(progress.coerceIn(0f, 1f))
+                            .height(2.dp)
+                            .background(RessoAccent)
+                    )
+                }
+
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
                 // Album Art / Thumbnail
                 Box(
                     modifier = Modifier
@@ -138,10 +156,11 @@ fun MiniPlayerBar(
                     Icon(
                         imageVector = if (isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
                         contentDescription = if (isPlaying) "Pause" else "Play",
-                        tint = Color.White,
+                        tint = RessoOnAccent,
                         modifier = Modifier.size(22.dp)
                     )
                 }
+            }
             }
         }
     }

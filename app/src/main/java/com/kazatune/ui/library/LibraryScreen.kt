@@ -72,8 +72,12 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil3.compose.AsyncImage
+import com.kazatune.ui.theme.AppBackground
+import com.kazatune.ui.theme.AppCardBackground
+import com.kazatune.ui.theme.AppCardBorder
 import com.kazatune.ui.theme.DinProFamily
 import com.kazatune.ui.theme.RessoAccent
+import com.kazatune.ui.theme.RessoOnAccent
 import com.kazatune.viewmodel.LibraryTab
 import com.kazatune.viewmodel.LibraryViewModel
 import com.maxrave.domain.data.entities.LocalPlaylistEntity
@@ -170,7 +174,7 @@ fun LibraryScreen(
         Column(
             modifier = modifier
                 .fillMaxSize()
-                .background(Color(0xFF0F0E13))
+                .background(AppBackground)
                 .statusBarsPadding()
                 .padding(top = 12.dp)
         ) {
@@ -204,7 +208,7 @@ fun LibraryScreen(
                             fontFamily = DinProFamily,
                             fontSize = 13.sp,
                             fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
-                            color = if (isSelected) Color.White else Color(0xAAFFFFFF),
+                            color = if (isSelected) RessoOnAccent else Color(0xAAFFFFFF),
                             modifier = Modifier.padding(horizontal = 14.dp, vertical = 7.dp)
                         )
                     }
@@ -365,7 +369,7 @@ fun LibraryScreen(
                                         fontFamily = DinProFamily,
                                         fontSize = 10.sp,
                                         fontWeight = FontWeight.Bold,
-                                        color = Color.White,
+                                        color = RessoOnAccent,
                                         modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
                                     )
                                 }
@@ -416,7 +420,8 @@ fun LibraryScreen(
                             item {
                                 Surface(
                                     shape = RoundedCornerShape(12.dp),
-                                    color = Color(0xFF181720),
+                                    color = AppCardBackground,
+border = AppCardBorder,
                                     modifier = Modifier.fillMaxWidth()
                                 ) {
                                     Column(
@@ -515,7 +520,8 @@ fun LibraryScreen(
                         item {
                             Surface(
                                 shape = RoundedCornerShape(14.dp),
-                                color = Color(0xFF181720),
+                                color = AppCardBackground,
+border = AppCardBorder,
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .clickable { showCreatePlaylistDialog = true }
@@ -1258,7 +1264,8 @@ fun YtPlaylistListItem(
 
     Surface(
         shape = RoundedCornerShape(12.dp),
-        color = Color(0xFF181720),
+        color = AppCardBackground,
+border = AppCardBorder,
         modifier = modifier
             .fillMaxWidth()
             .clickable(enabled = !isLoading) { onPlay() }
@@ -1394,7 +1401,8 @@ fun SongListItem(
 
     Surface(
         shape = RoundedCornerShape(12.dp),
-        color = Color(0xFF181720),
+        color = AppCardBackground,
+border = AppCardBorder,
         modifier = modifier
             .fillMaxWidth()
             .clickable { onPlay() }
@@ -1505,7 +1513,8 @@ fun PlaylistListItem(
 ) {
     Surface(
         shape = RoundedCornerShape(12.dp),
-        color = Color(0xFF181720),
+        color = AppCardBackground,
+border = AppCardBorder,
         modifier = modifier
             .fillMaxWidth()
             .clickable { onPlay() }

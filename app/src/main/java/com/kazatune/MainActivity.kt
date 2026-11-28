@@ -121,6 +121,8 @@ fun MainRootScreen(
     var isFullscreenLyrics by remember { mutableStateOf(false) }
     val nowPlaying by skimViewModel.nowPlaying.collectAsStateWithLifecycle()
     val controlState by skimViewModel.controlState.collectAsStateWithLifecycle()
+    val currentPositionMs by skimViewModel.currentPositionMs.collectAsStateWithLifecycle()
+    val totalDurationMs by skimViewModel.totalDurationMs.collectAsStateWithLifecycle()
 
     val updateStatus by updateViewModel.updateStatus.collectAsStateWithLifecycle()
     val showUpdateDialog by updateViewModel.showUpdateDialog.collectAsStateWithLifecycle()
@@ -178,9 +180,15 @@ fun MainRootScreen(
             ) {
                 // Show Mini Player when NOT on Skim tab
                 if (currentTab != MainTab.SKIM) {
+                    val miniProgress = if (totalDurationMs > 0L) {
+                        (currentPositionMs.toFloat() / totalDurationMs.toFloat()).coerceIn(0f, 1f)
+                    } else {
+                        0f
+                    }
                     MiniPlayerBar(
                         nowPlaying = nowPlaying,
                         isPlaying = controlState.isPlaying,
+                        progress = miniProgress,
                         onTogglePlayPause = { skimViewModel.togglePlayPause() },
                         onClick = {
                             skimViewModel.selectSkimTab(com.kazatune.viewmodel.SkimTab.FOR_YOU)

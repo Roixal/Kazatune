@@ -45,6 +45,7 @@ import com.kazatune.ui.theme.DinProFamily
 import com.kazatune.ui.theme.LiquidGlassCard
 import com.kazatune.ui.theme.LiquidGlassColors
 import com.kazatune.ui.theme.RessoAccent
+import com.kazatune.ui.theme.RessoOnAccent
 import com.kazatune.viewmodel.MigrationState
 import com.kazatune.viewmodel.PlaylistMigrationViewModel
 import org.koin.androidx.compose.koinViewModel
@@ -115,7 +116,7 @@ fun PlaylistMigrationDialog(
                 when (val s = state) {
                     is MigrationState.Idle -> {
                         Text(
-                            text = "Paste a Spotify or YouTube playlist link, or a tracklist (Song - Artist per line) to convert into a Skim local playlist.",
+                            text = "Paste any playlist link or a tracklist (Song - Artist per line) to convert into a Skim local playlist.",
                             fontFamily = DinProFamily,
                             fontSize = 13.sp,
                             color = Color(0xAAFFFFFF),
@@ -148,7 +149,7 @@ fun PlaylistMigrationDialog(
                             onValueChange = { rawInput = it },
                             placeholder = {
                                 Text(
-                                    "Paste YouTube link, Spotify/Apple tracklist, or backup JSON...",
+                                    "Paste playlist link, tracklist, or backup JSON...",
                                     color = Color(0x55FFFFFF),
                                     fontSize = 13.sp
                                 )
@@ -176,14 +177,14 @@ fun PlaylistMigrationDialog(
                                 .fillMaxWidth()
                                 .height(48.dp),
                             shape = RoundedCornerShape(24.dp),
-                            colors = ButtonDefaults.buttonColors(containerColor = RessoAccent)
+                            colors = ButtonDefaults.buttonColors(containerColor = RessoAccent, contentColor = RessoOnAccent)
                         ) {
                             Text(
                                 text = "Start Conversion & Import",
                                 fontFamily = DinProFamily,
                                 fontSize = 15.sp,
                                 fontWeight = FontWeight.Bold,
-                                color = Color.White
+                                color = RessoOnAccent
                             )
                         }
                     }
@@ -262,7 +263,7 @@ fun PlaylistMigrationDialog(
                                 },
                                 modifier = Modifier.fillMaxWidth().height(46.dp),
                                 shape = RoundedCornerShape(23.dp),
-                                colors = ButtonDefaults.buttonColors(containerColor = RessoAccent)
+                                colors = ButtonDefaults.buttonColors(containerColor = RessoAccent, contentColor = RessoOnAccent)
                             ) {
                                 Text("Done & View Library", fontFamily = DinProFamily, fontWeight = FontWeight.Bold)
                             }

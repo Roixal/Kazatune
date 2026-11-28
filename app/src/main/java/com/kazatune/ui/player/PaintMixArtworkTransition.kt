@@ -1,6 +1,5 @@
 package com.kazatune.ui.player
 
-import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
@@ -29,12 +28,10 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
-import androidx.compose.ui.draw.blur
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.CompositingStrategy
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
@@ -48,9 +45,10 @@ import kotlin.math.cos
 import kotlin.math.sin
 
 /**
- * Paint-mix DJ transition view for the center album art card:
- * 1. The incoming song's album art rises up from the bottom.
- * 2. Both covers swirl and blend together like liquid paint mixing.
+ * 60fps GPU-friendly paint-mix DJ transition view:
+ * 1. The incoming song's album art rises smoothly from the bottom of the screen.
+ * 2. Both covers blend and swirl together using GPU graphicsLayer transforms + radial paint glow
+ *    (no per-frame RenderEffect blur reallocation).
  * 3. As [progress] reaches 1f, the outgoing cover dissolves and only the new cover remains.
  */
 @Composable
@@ -62,40 +60,38 @@ fun PaintMixArtworkTransition(
 ) {
     val smoothProgress by animateFloatAsState(
         targetValue = progress.coerceIn(0f, 1f),
-        animationSpec = tween(durationMillis = 120, easing = FastOutSlowInEasing),
+        animationSpec = tween(durationMillis = 160, easing = LinearEasing),
         label = "PaintMixProgress"
     )
 
-    // Continuous swirl angle during mixing
     val infiniteTransition = rememberInfiniteTransition(label = "PaintSwirl")
     val swirlAngle by infiniteTransition.animateFloat(
         initialValue = 0f,
         targetValue = (2.0 * PI).toFloat(),
         animationSpec = infiniteRepeatable(
-            animation = tween(durationMillis = 3600, easing = LinearEasing),
+            animation = tween(durationMillis = 4000, easing = LinearEasing),
             repeatMode = RepeatMode.Restart
         ),
         label = "SwirlAngle"
     )
 
-    // Phase curves:
-    // - Rise from bottom: 0.0 -> 0.45
-    val riseFraction = (smoothProgress / 0.45f).coerceIn(0f, 1f)
-    val easedRise = 1f - (1f - riseFraction) * (1f - riseFraction)
+    // Smoothstep rise from bottom: 0.0 -> 0.50
+    val rawRise = (smoothProgress / 0.50f).coerceIn(0f, 1f)
+    val easedRise = rawRise * rawRise * (3f - 2f * rawRise)
 
-    // - Paint mix intensity peaks in the middle (0.2 -> 0.85)
+    // Paint-mix glow peaks in the middle
     val mixIntensity = sin(smoothProgress * PI).toFloat().coerceIn(0f, 1f)
 
-    // - Outgoing dissolves out: 0.35 -> 0.95
-    val outgoingAlpha = (1f - ((smoothProgress - 0.35f) / 0.60f).coerceIn(0f, 1f))
-    val incomingAlpha = (smoothProgress / 0.55f).coerceIn(0.15f, 1f)
+    // Smooth cross-dissolve
+    val outgoingAlpha = (1f - ((smoothProgress - 0.30f) / 0.65f).coerceIn(0f, 1f))
+    val incomingAlpha = (smoothProgress / 0.55f).coerceIn(0.20f, 1f)
 
     Box(
         modifier = modifier
             .fillMaxSize()
-            .background(Color(0xFF14131B))
+            .background(Color(0xFF0A090F))
     ) {
-        // 1. Outgoing song's album art (softly scales, rotates slightly, and melts away)
+        // 1. Outgoing song's album art (gently zooms & dissolves away)
         if (outgoingAlpha > 0.01f && !outgoingArtworkUrl.isNullOrBlank()) {
             AsyncImage(
                 model = outgoingArtworkUrl,
@@ -105,15 +101,14 @@ fun PaintMixArtworkTransition(
                     .fillMaxSize()
                     .graphicsLayer {
                         alpha = outgoingAlpha
-                        scaleX = 1f + mixIntensity * 0.14f
-                        scaleY = 1f + mixIntensity * 0.14f
-                        rotationZ = -mixIntensity * 6f
+                        scaleX = 1f + mixIntensity * 0.12f
+                        scaleY = 1f + mixIntensity * 0.12f
+                        rotationZ = -mixIntensity * 4f
                     }
-                    .blur((mixIntensity * 14f).dp)
             )
         }
 
-        // 2. Incoming (next) song's album art rising from bottom and blending like paint
+        // 2. Incoming (next) song's album art rising from bottom and blending in
         if (!incomingArtworkUrl.isNullOrBlank()) {
             AsyncImage(
                 model = incomingArtworkUrl,
@@ -122,23 +117,21 @@ fun PaintMixArtworkTransition(
                 modifier = Modifier
                     .fillMaxSize()
                     .graphicsLayer {
-                        compositingStrategy = CompositingStrategy.Offscreen
                         translationY = (1f - easedRise) * size.height
-                        scaleX = 0.88f + 0.12f * easedRise + mixIntensity * 0.06f
-                        scaleY = 0.88f + 0.12f * easedRise + mixIntensity * 0.06f
-                        rotationZ = mixIntensity * 5f * (1f - smoothProgress)
+                        scaleX = 0.90f + 0.10f * easedRise + mixIntensity * 0.04f
+                        scaleY = 0.90f + 0.10f * easedRise + mixIntensity * 0.04f
+                        rotationZ = mixIntensity * 3.5f * (1f - smoothProgress)
                         alpha = incomingAlpha
                     }
-                    .blur(((1f - smoothProgress) * mixIntensity * 10f).dp)
             )
         }
 
-        // 3. Swirling paint-mix ribbon & liquid sheen overlay during peak overlap
-        if (mixIntensity > 0.05f) {
+        // 3. Swirling paint-mix radial sheen overlay (pure GPU Canvas, 60fps)
+        if (mixIntensity > 0.04f) {
             Canvas(
                 modifier = Modifier
                     .fillMaxSize()
-                    .alpha(mixIntensity * 0.55f)
+                    .alpha(mixIntensity * 0.50f)
             ) {
                 val w = size.width
                 val h = size.height
@@ -150,15 +143,15 @@ fun PaintMixArtworkTransition(
                 drawCircle(
                     brush = Brush.radialGradient(
                         colors = listOf(
-                            RessoAccent.copy(alpha = 0.45f),
-                            Color(0xFF00E5FF).copy(alpha = 0.20f),
+                            RessoAccent.copy(alpha = 0.42f),
+                            Color(0xFF00E5FF).copy(alpha = 0.18f),
                             Color.Transparent
                         ),
                         center = c1,
-                        radius = w * 0.58f
+                        radius = w * 0.62f
                     ),
                     center = c1,
-                    radius = w * 0.58f,
+                    radius = w * 0.62f,
                     blendMode = BlendMode.Screen
                 )
 
@@ -169,27 +162,27 @@ fun PaintMixArtworkTransition(
                 drawCircle(
                     brush = Brush.radialGradient(
                         colors = listOf(
-                            Color(0xFF9D4EDD).copy(alpha = 0.40f),
-                            RessoAccent.copy(alpha = 0.15f),
+                            Color(0xFF9D4EDD).copy(alpha = 0.38f),
+                            RessoAccent.copy(alpha = 0.14f),
                             Color.Transparent
                         ),
                         center = c2,
-                        radius = w * 0.52f
+                        radius = w * 0.55f
                     ),
                     center = c2,
-                    radius = w * 0.52f,
+                    radius = w * 0.55f,
                     blendMode = BlendMode.Screen
                 )
             }
         }
 
-        // 4. Subtle "DJ MIXING" pill indicator at the bottom of the cover
+        // 4. Subtle "DJ MIXING" pill indicator
         Surface(
             shape = RoundedCornerShape(16.dp),
             color = Color(0xAA100F16),
             modifier = Modifier
                 .align(Alignment.BottomCenter)
-                .padding(bottom = 14.dp)
+                .padding(bottom = 110.dp)
                 .alpha((mixIntensity * 1.4f).coerceIn(0f, 1f))
         ) {
             Row(

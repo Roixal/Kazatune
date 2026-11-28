@@ -7,6 +7,7 @@ import android.content.Intent
 import android.net.Uri
 import android.view.ViewGroup
 import androidx.activity.compose.BackHandler
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import coil3.compose.AsyncImage
@@ -51,6 +52,8 @@ import androidx.compose.material.icons.filled.GraphicEq
 import androidx.compose.material.icons.filled.HighQuality
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Key
+import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.Login
 import androidx.compose.material.icons.filled.Logout
 import androidx.compose.material.icons.filled.Radio
@@ -91,8 +94,12 @@ import androidx.compose.ui.window.DialogProperties
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.kazatune.ui.theme.AccentColorPresets
 import com.kazatune.ui.theme.AppAccentState
+import com.kazatune.ui.theme.AppBackground
+import com.kazatune.ui.theme.AppCardBackground
+import com.kazatune.ui.theme.AppCardBorder
 import com.kazatune.ui.theme.DinProFamily
 import com.kazatune.ui.theme.RessoAccent
+import com.kazatune.ui.theme.RessoOnAccent
 import com.kazatune.viewmodel.SettingsViewModel
 import org.koin.androidx.compose.koinViewModel
 
@@ -168,7 +175,7 @@ fun SettingsScreen(
     Column(
         modifier = modifier
             .fillMaxSize()
-            .background(Color(0xFF0F0E13))
+            .background(AppBackground)
             .statusBarsPadding()
             .padding(top = 12.dp)
     ) {
@@ -196,10 +203,14 @@ fun SettingsScreen(
 
             item {
                 val activeAccent = RessoAccent
+                var showAccentPicker by remember { mutableStateOf(false) }
                 Surface(
                     shape = RoundedCornerShape(12.dp),
-                    color = Color(0xFF181720),
-                    modifier = Modifier.fillMaxWidth()
+                    color = AppCardBackground,
+border = AppCardBorder,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { showAccentPicker = !showAccentPicker }
                 ) {
                     Column(modifier = Modifier.padding(16.dp)) {
                         Row(
@@ -223,68 +234,93 @@ fun SettingsScreen(
                                     color = activeAccent
                                 )
                             }
-                            Box(
-                                modifier = Modifier
-                                    .size(26.dp)
-                                    .clip(CircleShape)
-                                    .background(activeAccent)
-                                    .border(2.dp, Color.White, CircleShape)
-                            )
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(24.dp)
+                                        .clip(CircleShape)
+                                        .background(activeAccent)
+                                        .border(2.dp, Color.White, CircleShape)
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Icon(
+                                    imageVector = if (showAccentPicker) {
+                                        Icons.Default.KeyboardArrowUp
+                                    } else {
+                                        Icons.Default.KeyboardArrowDown
+                                    },
+                                    contentDescription = "Toggle Color Picker",
+                                    tint = Color(0x99FFFFFF)
+                                )
+                            }
                         }
 
-                        Spacer(modifier = Modifier.height(14.dp))
-
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .horizontalScroll(rememberScrollState()),
-                            horizontalArrangement = Arrangement.spacedBy(12.dp)
-                        ) {
-                            AccentColorPresets.forEach { option ->
-                                val isSelected = option.color == activeAccent
-                                Column(
-                                    horizontalAlignment = Alignment.CenterHorizontally,
+                        AnimatedVisibility(visible = showAccentPicker) {
+                            Column {
+                                Spacer(modifier = Modifier.height(14.dp))
+                                Row(
                                     modifier = Modifier
-                                        .clip(RoundedCornerShape(10.dp))
-                                        .clickable {
-                                            AppAccentState.setAccentColor(context, option.color)
-                                        }
-                                        .padding(horizontal = 4.dp, vertical = 4.dp)
+                                        .fillMaxWidth()
+                                        .horizontalScroll(rememberScrollState()),
+                                    horizontalArrangement = Arrangement.spacedBy(12.dp)
                                 ) {
-                                    Box(
-                                        modifier = Modifier
-                                            .size(38.dp)
-                                            .clip(CircleShape)
-                                            .background(option.color)
-                                            .border(
-                                                width = if (isSelected) 2.5.dp else 1.dp,
-                                                color = if (isSelected) Color.White else Color(0x33FFFFFF),
-                                                shape = CircleShape
-                                            ),
-                                        contentAlignment = Alignment.Center
-                                    ) {
-                                        if (isSelected) {
-                                            Icon(
-                                                imageVector = Icons.Default.Check,
-                                                contentDescription = "Selected",
-                                                tint = if (option.color == Color(0xFFFFFFFF)) Color.Black else Color.White,
-                                                modifier = Modifier.size(18.dp)
+                                    AccentColorPresets.forEach { option ->
+                                        val isSelected = option.color == activeAccent
+                                        Column(
+                                            horizontalAlignment = Alignment.CenterHorizontally,
+                                            modifier = Modifier
+                                                .clip(RoundedCornerShape(10.dp))
+                                                .clickable {
+                                                    AppAccentState.setAccentColor(context, option.color)
+                                                }
+                                                .padding(horizontal = 4.dp, vertical = 4.dp)
+                                        ) {
+                                            Box(
+                                                modifier = Modifier
+                                                    .size(38.dp)
+                                                    .clip(CircleShape)
+                                                    .background(option.color)
+                                                    .border(
+                                                        width = if (isSelected) 2.5.dp else 1.dp,
+                                                        color = if (isSelected) Color.White else Color(0x33FFFFFF),
+                                                        shape = CircleShape
+                                                    ),
+                                                contentAlignment = Alignment.Center
+                                            ) {
+                                                if (isSelected) {
+                                                    Icon(
+                                                        imageVector = Icons.Default.Check,
+                                                        contentDescription = "Selected",
+                                                        tint = if (option.color == Color(0xFFFFFFFF)) Color.Black else Color.White,
+                                                        modifier = Modifier.size(18.dp)
+                                                    )
+                                                }
+                                            }
+                                            Spacer(modifier = Modifier.height(4.dp))
+                                            Text(
+                                                text = option.name.substringAfter(" "),
+                                                fontFamily = DinProFamily,
+                                                fontSize = 10.sp,
+                                                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+                                                color = if (isSelected) Color.White else Color(0x88FFFFFF)
                                             )
                                         }
                                     }
-                                    Spacer(modifier = Modifier.height(4.dp))
-                                    Text(
-                                        text = option.name.substringAfter(" "),
-                                        fontFamily = DinProFamily,
-                                        fontSize = 10.sp,
-                                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
-                                        color = if (isSelected) Color.White else Color(0x88FFFFFF)
-                                    )
                                 }
                             }
                         }
                     }
                 }
+            }
+
+            item {
+                SettingsSwitchCard(
+                    icon = Icons.Default.Wallpaper,
+                    title = "AMOLED Pure Black Mode",
+                    subtitle = "Use true #000000 black backgrounds across the app to save battery",
+                    checked = AppAccentState.amoledModeEnabled,
+                    onCheckedChange = { AppAccentState.setAmoledModeEnabled(context, it) }
+                )
             }
 
             // Section: YouTube Music Account
@@ -295,7 +331,8 @@ fun SettingsScreen(
             item {
                 Surface(
                     shape = RoundedCornerShape(12.dp),
-                    color = Color(0xFF181720),
+                    color = AppCardBackground,
+border = AppCardBorder,
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Column(modifier = Modifier.padding(16.dp)) {
@@ -373,7 +410,7 @@ fun SettingsScreen(
                                     onClick = { showWebLoginDialog = true },
                                     colors = ButtonDefaults.buttonColors(
                                         containerColor = RessoAccent,
-                                        contentColor = Color.White
+                                        contentColor = RessoOnAccent
                                     ),
                                     shape = RoundedCornerShape(14.dp),
                                     modifier = Modifier.weight(1f)
@@ -381,7 +418,7 @@ fun SettingsScreen(
                                     Icon(
                                         imageVector = Icons.Default.Login,
                                         contentDescription = null,
-                                        tint = Color.White,
+                                        tint = RessoOnAccent,
                                         modifier = Modifier.size(16.dp)
                                     )
                                     Spacer(modifier = Modifier.width(6.dp))
@@ -450,7 +487,7 @@ fun SettingsScreen(
             item {
                 SettingsSwitchCard(
                     icon = Icons.Default.Wallpaper,
-                    title = "Spotify Canvas Loops",
+                    title = "Canvas Motion Loops",
                     subtitle = "Stream short animated video loops when available",
                     checked = canvasEnabled,
                     onCheckedChange = { settingsViewModel.toggleCanvas(it) }
@@ -476,7 +513,7 @@ fun SettingsScreen(
             item {
                 SettingsSwitchCard(
                     icon = Icons.Default.GraphicEq,
-                    title = "Spotify-Style Mix & Crossfade",
+                    title = "Skim DJ Mix & Crossfade",
                     subtitle = "Seamless DJ transitions between songs (also customizable per playlist in Library)",
                     checked = crossfadeEnabled,
                     onCheckedChange = { settingsViewModel.toggleCrossfade(it) }
@@ -540,7 +577,8 @@ fun SettingsScreen(
             item {
                 Surface(
                     shape = RoundedCornerShape(12.dp),
-                    color = Color(0xFF181720),
+                    color = AppCardBackground,
+border = AppCardBorder,
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Row(
@@ -622,7 +660,8 @@ fun SettingsScreen(
 
                 Surface(
                     shape = RoundedCornerShape(12.dp),
-                    color = Color(0xFF181720),
+                    color = AppCardBackground,
+border = AppCardBorder,
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Column(modifier = Modifier.padding(16.dp)) {
@@ -738,7 +777,8 @@ fun SettingsScreen(
             item {
                 Surface(
                     shape = RoundedCornerShape(12.dp),
-                    color = Color(0xFF181720),
+                    color = AppCardBackground,
+border = AppCardBorder,
                     modifier = Modifier
                         .fillMaxWidth()
                         .clickable { showLastfmDialog = true }
@@ -818,7 +858,8 @@ fun SettingsScreen(
             item {
                 Surface(
                     shape = RoundedCornerShape(12.dp),
-                    color = Color(0xFF181720),
+                    color = AppCardBackground,
+border = AppCardBorder,
                     modifier = Modifier
                         .fillMaxWidth()
                         .clickable { showAboutScreen = true }
@@ -1263,7 +1304,8 @@ fun SettingsItemCard(
 ) {
     Surface(
         shape = RoundedCornerShape(12.dp),
-        color = Color(0xFF181720),
+        color = AppCardBackground,
+border = AppCardBorder,
         modifier = Modifier
             .fillMaxWidth()
             .clickable { onClick() }
@@ -1321,7 +1363,8 @@ fun SettingsSwitchCard(
 ) {
     Surface(
         shape = RoundedCornerShape(12.dp),
-        color = Color(0xFF181720),
+        color = AppCardBackground,
+border = AppCardBorder,
         modifier = Modifier.fillMaxWidth()
     ) {
         Row(
@@ -1368,7 +1411,7 @@ fun SettingsSwitchCard(
                 checked = checked,
                 onCheckedChange = onCheckedChange,
                 colors = SwitchDefaults.colors(
-                    checkedThumbColor = Color.White,
+                    checkedThumbColor = RessoOnAccent,
                     checkedTrackColor = RessoAccent,
                     uncheckedThumbColor = Color(0x88FFFFFF),
                     uncheckedTrackColor = Color(0xFF2C2B36)
@@ -1389,7 +1432,7 @@ fun AboutScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color(0xFF0F0E13))
+            .background(AppBackground)
             .statusBarsPadding()
             .padding(top = 12.dp)
     ) {
@@ -1426,7 +1469,8 @@ fun AboutScreen(
             item {
                 Surface(
                     shape = RoundedCornerShape(16.dp),
-                    color = Color(0xFF181720),
+                    color = AppCardBackground,
+border = AppCardBorder,
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Column(modifier = Modifier.padding(18.dp)) {
@@ -1488,7 +1532,8 @@ fun AboutScreen(
             item {
                 Surface(
                     shape = RoundedCornerShape(16.dp),
-                    color = Color(0xFF181720),
+                    color = AppCardBackground,
+border = AppCardBorder,
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Column(modifier = Modifier.padding(18.dp)) {
@@ -1502,14 +1547,15 @@ fun AboutScreen(
                         Spacer(modifier = Modifier.height(10.dp))
 
                         val features = listOf(
-                            "📱 Vertical Discovery Feed" to "Continuous swipe through endless songs with instant previews",
-                            "🎯 Hook Jump" to "One-tap jump straight to the song's chorus or peak moment",
-                            "🎤 Word-by-Word Synced Lyrics" to "Real-time scrolling karaoke lyrics with timing offset calibration",
-                            "💿 Self-Healing Playback" to "Tap the spinning vinyl disc to instantly purge stalls and reload stream tokens",
-                            "🎛️ Dual-Pane Landscape Player" to "Dedicated tablet and landscape player with vinyl turntable and synced lyrics",
-                            "📲 Home Screen Glance Widgets" to "Interactive Turntable widget, Recent Playlists, and 30-Day Insights",
-                            "🧠 On-Device AI Music Taste Engine" to "Private listening analysis and dynamic personas without paid API keys",
-                            "🔄 Universal Playlist Migration" to "One-tap conversion from Spotify, YouTube, or raw tracklist text",
+                            "📱 Vertical Discovery Feed" to "Endless swipeable feed seeded from your current listening vibe",
+                            "🎤 Aesthetic Full-Screen Lyrics" to "Synced scrolling lyrics with blurred backdrop, tap-to-seek & offset calibration",
+                            "🌊 Dynamic Fluid Mesh Gradient" to "Real-time Palette API color extraction for living album backdrops",
+                            "🎧 Skim Smart DJ Mixing" to "Auto BPM/Camelot key transitions, EQ sweeps, and paint-mix visual transitions",
+                            "🖥️ Widescreen Studio Landscape Mode" to "Borderless split layout with large animated lyrics and album art",
+                            "🎨 Custom Accent Colors & AMOLED" to "9 UI accent themes including Monochrome plus true #000000 AMOLED mode",
+                            "🎯 Hook Jump & 10s Canvas Showcase" to "Jump straight to the chorus and showcase looping Canvas videos after 10s",
+                            "🎛️ 10-Band Studio Equalizer" to "Built-in presets, custom band sliders, and bass boost",
+                            "🔄 Universal Playlist Import" to "Smart scored matching from playlist links, URLs, or tracklists",
                             "🛡️ SponsorBlock & Last.fm" to "Automatic non-music segment skipping and background scrobbling"
                         )
 
@@ -1587,7 +1633,8 @@ fun AboutScreen(
             item {
                 Surface(
                     shape = RoundedCornerShape(16.dp),
-                    color = Color(0xFF181720),
+                    color = AppCardBackground,
+border = AppCardBorder,
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Column(modifier = Modifier.padding(18.dp)) {

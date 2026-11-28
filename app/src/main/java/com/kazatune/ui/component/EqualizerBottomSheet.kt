@@ -47,6 +47,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.kazatune.ui.theme.DinProFamily
 import com.kazatune.ui.theme.RessoAccent
+import com.kazatune.ui.theme.RessoOnAccent
 import com.kazatune.viewmodel.EQUALIZER_BANDS_HZ
 import com.kazatune.viewmodel.EQUALIZER_PRESETS
 import kotlin.math.roundToInt
@@ -125,7 +126,7 @@ fun EqualizerBottomSheet(
                         checked = enabled,
                         onCheckedChange = onToggleEnabled,
                         colors = SwitchDefaults.colors(
-                            checkedThumbColor = Color.White,
+                            checkedThumbColor = RessoOnAccent,
                             checkedTrackColor = RessoAccent,
                             uncheckedThumbColor = Color(0x88FFFFFF),
                             uncheckedTrackColor = Color(0x22FFFFFF)

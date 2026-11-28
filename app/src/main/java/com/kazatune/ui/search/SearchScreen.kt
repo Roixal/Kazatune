@@ -70,8 +70,12 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil3.compose.AsyncImage
+import com.kazatune.ui.theme.AppBackground
+import com.kazatune.ui.theme.AppCardBackground
+import com.kazatune.ui.theme.AppCardBorder
 import com.kazatune.ui.theme.DinProFamily
 import com.kazatune.ui.theme.RessoAccent
+import com.kazatune.ui.theme.RessoOnAccent
 import com.kazatune.viewmodel.SearchCategory
 import com.kazatune.viewmodel.SearchViewModel
 import com.maxrave.domain.data.model.browse.album.Track
@@ -126,7 +130,7 @@ fun SearchScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color(0xFF0F0E13))
+            .background(AppBackground)
             .statusBarsPadding()
             .padding(top = 12.dp)
     ) {
@@ -214,7 +218,7 @@ fun SearchScreen(
                         fontFamily = DinProFamily,
                         fontSize = 13.sp,
                         fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
-                        color = if (isSelected) Color.White else Color(0xAAFFFFFF),
+                        color = if (isSelected) RessoOnAccent else Color(0xAAFFFFFF),
                         modifier = Modifier.padding(horizontal = 14.dp, vertical = 7.dp)
                     )
                 }
@@ -491,7 +495,8 @@ fun SearchResultItem(
 
     Surface(
         shape = RoundedCornerShape(12.dp),
-        color = Color(0xFF181720),
+        color = AppCardBackground,
+        border = AppCardBorder,
         modifier = modifier
             .fillMaxWidth()
             .clickable { onPlay() }
@@ -576,7 +581,8 @@ fun AlbumSearchResultItem(
 
     Surface(
         shape = RoundedCornerShape(12.dp),
-        color = Color(0xFF181720),
+        color = AppCardBackground,
+        border = AppCardBorder,
         modifier = modifier
             .fillMaxWidth()
             .clickable { onPlay() }
@@ -668,7 +674,8 @@ fun ArtistSearchResultItem(
 
     Surface(
         shape = RoundedCornerShape(12.dp),
-        color = Color(0xFF181720),
+        color = AppCardBackground,
+        border = AppCardBorder,
         modifier = modifier
             .fillMaxWidth()
             .clickable { onPlay() }
@@ -756,7 +763,8 @@ fun PlaylistSearchResultItem(
 
     Surface(
         shape = RoundedCornerShape(12.dp),
-        color = Color(0xFF181720),
+        color = AppCardBackground,
+        border = AppCardBorder,
         modifier = modifier
             .fillMaxWidth()
             .clickable { onPlay() }
@@ -852,7 +860,7 @@ fun SearchDetailView(
     Column(
         modifier = modifier
             .fillMaxSize()
-            .background(Color(0xFF0F0E13))
+            .background(AppBackground)
             .statusBarsPadding()
     ) {
         // Top App Bar with Back Button
@@ -935,9 +943,9 @@ fun SearchDetailView(
                     Spacer(modifier = Modifier.height(16.dp))
                     Button(
                         onClick = onBack,
-                        colors = ButtonDefaults.buttonColors(containerColor = RessoAccent)
+                        colors = ButtonDefaults.buttonColors(containerColor = RessoAccent, contentColor = RessoOnAccent)
                     ) {
-                        Text("Back", color = Color.White, fontFamily = DinProFamily)
+                        Text("Back", color = RessoOnAccent, fontFamily = DinProFamily)
                     }
                 }
             }
@@ -1012,7 +1020,7 @@ fun SearchDetailView(
                                         }
                                     },
                                     enabled = state.tracks.isNotEmpty(),
-                                    colors = ButtonDefaults.buttonColors(containerColor = RessoAccent),
+                                    colors = ButtonDefaults.buttonColors(containerColor = RessoAccent, contentColor = RessoOnAccent),
                                     shape = RoundedCornerShape(24.dp),
                                     modifier = Modifier
                                         .weight(1f)
@@ -1021,7 +1029,7 @@ fun SearchDetailView(
                                     Icon(
                                         imageVector = Icons.Default.PlayArrow,
                                         contentDescription = "Play",
-                                        tint = Color.White,
+                                        tint = RessoOnAccent,
                                         modifier = Modifier.size(20.dp)
                                     )
                                     Spacer(modifier = Modifier.width(6.dp))
@@ -1030,7 +1038,7 @@ fun SearchDetailView(
                                         fontFamily = DinProFamily,
                                         fontSize = 15.sp,
                                         fontWeight = FontWeight.Bold,
-                                        color = Color.White
+                                        color = RessoOnAccent
                                     )
                                 }
 

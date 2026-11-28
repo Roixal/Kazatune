@@ -55,6 +55,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.kazatune.ui.theme.DinProFamily
 import com.kazatune.ui.theme.RessoAccent
+import com.kazatune.ui.theme.RessoOnAccent
 import com.maxrave.domain.data.entities.LocalPlaylistEntity
 import com.maxrave.domain.data.model.browse.album.Track
 
@@ -130,7 +131,7 @@ fun CreatePlaylistDialog(
                     }
                 },
                 enabled = title.isNotBlank(),
-                colors = ButtonDefaults.buttonColors(containerColor = RessoAccent)
+                colors = ButtonDefaults.buttonColors(containerColor = RessoAccent, contentColor = RessoOnAccent)
             ) {
                 Text("Create", fontFamily = DinProFamily, fontWeight = FontWeight.Bold)
             }
@@ -188,7 +189,7 @@ fun AddToPlaylistBottomSheet(
                         duplicateTargetPlaylist = null
                         onDismissRequest()
                     },
-                    colors = ButtonDefaults.buttonColors(containerColor = RessoAccent),
+                    colors = ButtonDefaults.buttonColors(containerColor = RessoAccent, contentColor = RessoOnAccent),
                     shape = RoundedCornerShape(12.dp)
                 ) {
                     Text("Add Anyway", fontFamily = DinProFamily, fontWeight = FontWeight.Bold)
@@ -311,7 +312,7 @@ fun AddToPlaylistBottomSheet(
                                     }
                                 },
                                 enabled = newPlaylistName.isNotBlank(),
-                                colors = ButtonDefaults.buttonColors(containerColor = RessoAccent),
+                                colors = ButtonDefaults.buttonColors(containerColor = RessoAccent, contentColor = RessoOnAccent),
                                 shape = RoundedCornerShape(12.dp)
                             ) {
                                 Text("Add", fontFamily = DinProFamily, fontWeight = FontWeight.Bold)
@@ -377,7 +378,7 @@ fun AddToPlaylistBottomSheet(
                     Spacer(modifier = Modifier.height(16.dp))
                     Button(
                         onClick = { showInlineCreate = true },
-                        colors = ButtonDefaults.buttonColors(containerColor = RessoAccent),
+                        colors = ButtonDefaults.buttonColors(containerColor = RessoAccent, contentColor = RessoOnAccent),
                         shape = RoundedCornerShape(20.dp)
                     ) {
                         Icon(Icons.Default.Add, null, modifier = Modifier.size(18.dp))

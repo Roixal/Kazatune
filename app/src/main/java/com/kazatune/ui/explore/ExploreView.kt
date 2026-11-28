@@ -40,6 +40,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil3.compose.AsyncImage
 import com.kazatune.ui.theme.DinProFamily
 import com.kazatune.ui.theme.RessoAccent
+import com.kazatune.ui.theme.RessoOnAccent
 import com.kazatune.viewmodel.ExploreCategory
 import com.kazatune.viewmodel.SkimViewModel
 import com.maxrave.domain.data.model.browse.album.Track
@@ -80,7 +81,7 @@ fun ExploreView(
                         fontFamily = DinProFamily,
                         fontSize = 13.sp,
                         fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
-                        color = if (isSelected) Color.White else Color(0xAAFFFFFF),
+                        color = if (isSelected) RessoOnAccent else Color(0xAAFFFFFF),
                         modifier = Modifier.padding(horizontal = 14.dp, vertical = 7.dp)
                     )
                 }

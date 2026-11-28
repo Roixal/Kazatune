@@ -12,7 +12,9 @@ import com.kazatune.ui.component.SleepTimerBottomSheet
 import com.maxrave.domain.mediaservice.handler.RepeatState
 import android.content.Intent
 import android.content.res.Configuration
+import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.togetherWith
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutSlowInEasing
@@ -144,6 +146,7 @@ import com.kazatune.ui.player.SyncedLyricsOverlay
 import com.kazatune.ui.player.VinylDisc
 import com.kazatune.ui.theme.DinProFamily
 import com.kazatune.ui.theme.RessoAccent
+import com.kazatune.ui.theme.RessoOnAccent
 import com.kazatune.viewmodel.CommentViewModel
 import com.kazatune.viewmodel.SettingsViewModel
 import com.kazatune.viewmodel.SkimTab
@@ -363,6 +366,7 @@ fun SkimScreen(
 
                 VerticalPager(
                     state = pagerState,
+                    userScrollEnabled = !isFullscreenLyrics,
                     modifier = Modifier.fillMaxSize()
                 ) { page ->
                     val track = tracks[page]
@@ -1335,44 +1339,57 @@ fun SkimPageCard(
                     backgroundColor = Color(0x351E1C2C),
                     borderBrush = LiquidGlassColors.GlassBorderBrush
                 ) {
-                    Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 16.dp, vertical = 10.dp)
-                    ) {
-                        Text(
-                            text = currentLyricText ?: track.title,
-                            fontFamily = DinProFamily,
-                            fontSize = 20.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = Color.White,
-                            minLines = 2,
-                            maxLines = 2,
-                            overflow = TextOverflow.Ellipsis,
-                            lineHeight = 26.sp
-                        )
-                        Spacer(modifier = Modifier.height(3.dp))
-                        Text(
-                            text = nextLyricText ?: artistName.ifBlank { "Skim Music" },
-                            fontFamily = DinProFamily,
-                            fontSize = 14.sp,
-                            fontWeight = FontWeight.Normal,
-                            color = Color(0x99FFFFFF),
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
-                        )
+                    AnimatedContent(
+                        targetState = (currentLyricText ?: track.title) to (nextLyricText ?: artistName.ifBlank { "Skim Music" }),
+                        transitionSpec = {
+                            (fadeIn(tween(280, easing = FastOutSlowInEasing)) +
+                                slideInVertically(tween(280, easing = FastOutSlowInEasing)) { it / 3 })
+                                .togetherWith(
+                                    fadeOut(tween(200, easing = FastOutSlowInEasing)) +
+                                        slideOutVertically(tween(200, easing = FastOutSlowInEasing)) { -it / 3 }
+                                )
+                        },
+                        label = "SmallLyricsBannerAnim"
+                    ) { (primaryLine, secondaryLine) ->
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 16.dp, vertical = 10.dp)
+                        ) {
+                            Text(
+                                text = primaryLine,
+                                fontFamily = DinProFamily,
+                                fontSize = 20.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = Color.White,
+                                minLines = 2,
+                                maxLines = 2,
+                                overflow = TextOverflow.Ellipsis,
+                                lineHeight = 26.sp
+                            )
+                            Spacer(modifier = Modifier.height(3.dp))
+                            Text(
+                                text = secondaryLine,
+                                fontFamily = DinProFamily,
+                                fontSize = 14.sp,
+                                fontWeight = FontWeight.Normal,
+                                color = Color(0x99FFFFFF),
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                        }
                     }
                 }
             }
 
-            // B. Center Content: Album Cover Card (latches small once 30s is reached on Canvas tracks)
-            var hasPassed30Sec by remember(track.videoId) { mutableStateOf(false) }
+            // B. Center Content: Album Cover Card (latches small once 10s is reached on Canvas tracks)
+            var hasPassed10Sec by remember(track.videoId) { mutableStateOf(false) }
             LaunchedEffect(currentPositionMs, isCanvasVideo, isPlaying) {
-                if (isCanvasVideo && isPlaying && currentPositionMs >= 30_000L) {
-                    hasPassed30Sec = true
+                if (isCanvasVideo && isPlaying && currentPositionMs >= 10_000L) {
+                    hasPassed10Sec = true
                 }
             }
-            val showCompactArtForCanvas = isCanvasVideo && hasPassed30Sec
+            val showCompactArtForCanvas = isCanvasVideo && hasPassed10Sec
             val artWidthFraction by animateFloatAsState(
                 targetValue = if (showCompactArtForCanvas) 0.36f else 0.92f,
                 animationSpec = tween(durationMillis = 600, easing = FastOutSlowInEasing),
@@ -2011,7 +2028,7 @@ fun MoodsView(
                         fontFamily = DinProFamily,
                         fontSize = 13.sp,
                         fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
-                        color = if (isSelected) Color.White else Color(0xCCFFFFFF),
+                        color = if (isSelected) RessoOnAccent else Color(0xCCFFFFFF),
                         modifier = Modifier.padding(horizontal = 14.dp, vertical = 7.dp)
                     )
                 }
