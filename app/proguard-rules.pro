@@ -4,3 +4,4 @@
 -dontwarn okhttp3.**
 -dontwarn okio.**
 -dontwarn kotlinx.serialization.**
+-dontwarn java.beans.**
